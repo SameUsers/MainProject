@@ -1,10 +1,12 @@
 from flask import Flask, request,jsonify
 from functools import wraps
 import uuid
+import time
+from pathlib import Path
 import hashlib
 from dotenv import load_dotenv
 import os
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter
 load_dotenv()
 
 model=ModelX()
@@ -83,6 +85,8 @@ def push_task():
     token = getattr(request, "token", None)
     username = getattr(request, "username", None)
 
+    task_list=[]
+
     for audio in audio_files:
         if not audio or audio.filename == "":
             continue
@@ -92,19 +96,33 @@ def push_task():
             return jsonify({"Ошибка":"Неподдерживаемый формат аудио"})
         
         file_manager.makedir("audio_data")
-        save_path=file_manager.get_file_path("audio_data", username, audio.filename)
+        task_id = str(uuid.uuid4())
+        save_path=file_manager.get_file_path("audio_data", username, task_id)
         audio.save(save_path)
         file_size = file_manager.get_file_size(save_path)
         file_duration = file_manager.get_audio_duration(save_path)
 
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
 
+        if remaining_time:
+            current_time = remaining_time[0]["time_limit"]
+            new_time = max(0, current_time - int(file_duration))
+        
+        if int(file_duration) > current_time:
+            return jsonify({"Ошибка": "Недостаточно времени. Осталось: {} сек, требуется: {} сек.".format(current_time, int(file_duration))}), 400
+
+        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
+        db.execute(sql_duration, (new_time, token))
+        
         task_data = {
             "username":username,
             "token":token,
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
-            "status":"Quied"
+            "task_id" : task_id,
+            "status":"Queued"
         }
 
         rabbitmq.publish(task_data)
@@ -116,30 +134,100 @@ def push_task():
         file_path TEXT,
         file_name TEXT,
         content_type TEXT,
+        task_id TEXT,
         status TEXT)"""
         db.execute(sql_data, fetch=False)
         db.insert("task", task_data)
 
-    return jsonify({"Результат":"Все задачи были успешно поставлны в очередь"})
+        response_message={
+            "task_id":task_id,
+            "file_name":audio.filename,
+            "remaining_time" : new_time
+        }
+
+        task_list.append(response_message)
+
+    return jsonify(task_list)
+
+@app.route("/status", methods=["GET"])
+@header_check
+def get_task_status():
+
+    token = getattr(request, "token", None)
+    username = getattr(request, "username", None)
+
+    task_id = request.args.get("task_id")
+    page = int(request.args.get("page", 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    if task_id:
+        sql = """
+            SELECT * FROM task
+            WHERE task_id = %s AND username = %s AND token = %s
+            LIMIT 1
+        """
+
+        result = db.execute(sql, params=[task_id, username, token], fetch=True)
+        if not result:
+            return jsonify({"Ошибка": "Задача не найдена"}), 404
+        return jsonify(result[0])
+    
+    else:
+
+        sql = """
+            SELECT * FROM task
+            WHERE username = %s AND token = %s
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """
+
+        result = db.execute(sql, params=[username, token, per_page, offset], fetch=True)
 
 
+        count_sql = """
+            SELECT COUNT(*) FROM task
+            WHERE username = %s AND token = %s
+        """
 
-def transcriptor(file_path):
-    sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
+        count_result = db.execute(count_sql, params=[username, token], fetch=True)
+        total_tasks = count_result[0]['count'] if count_result else 0
+
+        return jsonify({
+            "page": page,
+            "per_page": per_page,
+            "total_tasks": total_tasks,
+            "total_pages": (total_tasks + per_page - 1) // per_page,
+            "tasks": result
+        })
+
+def transcriptor(file_path,task_id):
+    sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
     status = "processing"
-    db.execute(sql_update, (status, file_path))
+    db.execute(sql_update, (status, task_id))
 
     to_transcription = Transcribe(model, audio_path=file_path)
     result = to_transcription.transcribe()
-    print(result)
+    json_path = Path(file_path).with_suffix(".json")
+    txt_path = Path(file_path).with_suffix(".txt")
+    
+    formatter = TranscriptFormatter(
+        segments=result["segments"],
+        json_path=json_path,
+        txt_path=txt_path,
+        start_time=time.time()
+    )
+    formatter.format_segments()
+    formatter.save()
 
-    sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
+
+    sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
     status = "done"
-    db.execute(sql_update, (status, file_path))
+    db.execute(sql_update, (status, task_id))
 
 def task_process():
     def handle_task(message):
-        transcriptor(message["file_path"])
+        transcriptor(message["file_path"],message["task_id"])
 
     rabbit.consume_forever(handle_task)
 

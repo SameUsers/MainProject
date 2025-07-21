@@ -11,6 +11,7 @@ from datetime import datetime
 import logging
 import pika
 import json
+import random
 import time
 import threading
 from huggingface_hub import login
@@ -308,3 +309,87 @@ class ThreadRunner:
 
     def join(self, timeout=None):
         self.thread.join(timeout)
+
+class TranscriptFormatter:
+    def __init__(self, segments, json_path: Path, txt_path: Path, start_time: float = None, max_pause: float = 2.0):
+        self.segments = segments
+        self.json_path = json_path
+        self.txt_path = txt_path
+        self.start_time = start_time or time.time()
+        self.max_pause = max_pause
+
+        self.transcript_parts = []
+        self.timestamps = []
+        self.final_lines = []
+
+    @staticmethod
+    def _format_timestamp(seconds: float) -> str:
+        minutes = int(seconds // 60)
+        sec = int(seconds % 60)
+        return f"{minutes:02}:{sec:02}"
+
+    def format_segments(self):
+        merged_segments = []
+        current_segment = None
+
+        for seg in self.segments:
+            try:
+                start = float(seg["start"])
+                end = float(seg["end"])
+            except Exception as err:
+                raise ValueError(f"Ошибка преобразования start/end в сегменте: {seg}") from err
+
+            speaker = seg.get("speaker")
+            if speaker is None:
+                speaker_id = random.randint(1, 2)
+            else:
+                speaker_id = int(speaker.split("_")[-1]) + 1
+
+            speaker_name = f"Спикер {speaker_id}"
+            text = seg["text"].strip()
+
+            if current_segment and current_segment["speaker"] == speaker_name and start - current_segment["end"] <= self.max_pause:
+                current_segment["end"] = end
+                current_segment["text"] += " " + text
+            else:
+                if current_segment:
+                    merged_segments.append(current_segment)
+                current_segment = {
+                    "start": start,
+                    "end": end,
+                    "speaker": speaker_name,
+                    "text": text
+                }
+
+        if current_segment:
+            merged_segments.append(current_segment)
+
+        for seg in merged_segments:
+            self.transcript_parts.append(seg["text"])
+            self.timestamps.append(seg)
+            start_str = self._format_timestamp(seg["start"])
+            self.final_lines.append((seg["start"], seg["speaker"], start_str, seg["text"]))
+
+    def save(self):
+        # Сохраняем JSON
+        processing_time = round(time.time() - self.start_time, 2)
+        response = {
+            "status": "success",
+            "text": " ".join(self.transcript_parts),
+            "segments": self.timestamps,
+            "processing_time": processing_time
+        }
+
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            json.dump(response, f, ensure_ascii=False, indent=2)
+
+        # Сохраняем TXT
+        with open(self.txt_path, "w", encoding="utf-8") as f:
+            last_speaker = None
+            for _, speaker, time_str, text in sorted(self.final_lines, key=lambda x: x[0]):
+                if speaker != last_speaker:
+                    if last_speaker is not None:
+                        f.write("\n")
+                    f.write(f"{speaker}:\n")
+                    last_speaker = speaker
+                f.write(f"{time_str} - {text}\n")
