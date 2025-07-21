@@ -1,6 +1,6 @@
 import whisperx
 import gc
-from pyannote.audio import Pipeline as DiarizationPipeline
+from pyannote.audio import Pipeline
 from pymediainfo import MediaInfo
 import psycopg2
 from psycopg2 import OperationalError, sql
@@ -13,6 +13,7 @@ import pika
 import json
 import threading
 from huggingface_hub import login
+from whisperx.diarize import DiarizationPipeline
 from dotenv import load_dotenv
 load_dotenv()
 
