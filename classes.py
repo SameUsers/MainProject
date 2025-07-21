@@ -197,21 +197,22 @@ class FileManager:
         except Exception as e:
             print(f"[FileManager] Ошибка при создании папки: {e}")
 
-    def get_file_path(self, relative_dir: str, subfolder: str, filename: str) -> Path:
-        target_dir = self.base_dir / relative_dir / subfolder
-        self.makedir(target_dir)
-        file_path = target_dir / filename
-        return file_path
-    
-    def get_file_size(self, file_path: str | Path, in_mb: bool = False) -> float:
+    def get_task_folder(self, relative_dir: str, username: str, task_id: str) -> Path:
+        folder = self.base_dir / relative_dir / username / task_id
+        self.makedir(folder)
+        return folder
 
+    def get_file_path(self, relative_dir: str, username: str, task_id: str, filename: str) -> Path:
+        folder = self.get_task_folder(relative_dir, username, task_id)
+        return folder / filename
+
+    def get_file_size(self, file_path: str | Path, in_mb: bool = False) -> float:
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f"Файл не найден: {file_path}")
         
         size_bytes = path.stat().st_size
         return round(size_bytes / (1024 * 1024), 2) if in_mb else size_bytes
-    
 
     def get_audio_duration(self, file_path: str | Path) -> float:
         path = Path(file_path)

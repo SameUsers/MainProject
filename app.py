@@ -97,7 +97,7 @@ def push_task():
         
         file_manager.makedir("audio_data")
         task_id = str(uuid.uuid4())
-        save_path=file_manager.get_file_path("audio_data", username, task_id)
+        save_path = file_manager.get_file_path("audio_data", username, task_id, audio.filename)
         audio.save(save_path)
         file_size = file_manager.get_file_size(save_path)
         file_duration = file_manager.get_audio_duration(save_path)
@@ -202,21 +202,25 @@ def get_task_status():
         })
 
 def transcriptor(file_path,task_id):
+
     sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
     status = "processing"
     db.execute(sql_update, (status, task_id))
 
     to_transcription = Transcribe(model, audio_path=file_path)
     result = to_transcription.transcribe()
-    json_path = Path(file_path).with_suffix(".json")
-    txt_path = Path(file_path).with_suffix(".txt")
-    
+
+    file_path = Path(file_path)
+    task_folder = file_path.parent
+    json_path = task_folder / (file_path.stem + ".json")
+    txt_path = task_folder / (file_path.stem + ".txt")
+
     formatter = TranscriptFormatter(
         segments=result["segments"],
         json_path=json_path,
         txt_path=txt_path,
-        start_time=time.time()
-    )
+        start_time=time.time())
+
     formatter.format_segments()
     formatter.save()
 
