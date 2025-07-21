@@ -1,12 +1,12 @@
 from flask import Flask, request,jsonify
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe
+from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExistUtil
 from functools import wraps
-import uuid
 import time
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter, TaskDownloader, ValueExistUtil
-from classes import TokenGenerate
+
 load_dotenv()
 
 model=ModelX()
@@ -249,8 +249,8 @@ def transcriptor(file_path,task_id):
 
     file_path = Path(file_path)
     task_folder = file_path.parent
-    json_path = task_folder / (task_id.stem + ".json")
-    txt_path = task_folder / (task_id.stem + ".txt")
+    json_path = task_folder / f"{task_id}.json"
+    txt_path = task_folder / f"{task_id}.txt"
 
     formatter = TranscriptFormatter(
         segments=result["segments"],
