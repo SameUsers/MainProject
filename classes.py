@@ -67,7 +67,7 @@ class Transcribe(ModelX):
         )
 
     def diarize(self):
-        token_hfc=os.get("token_hf")
+        token_hfc=os.getenv("token_hf")
         login(token_hfc)
         diarize_model = DiarizationPipeline(
             use_auth_token=token_hfc,
