@@ -243,8 +243,8 @@ def transcriptor(file_path,task_id):
 
     file_path = Path(file_path)
     task_folder = file_path.parent
-    json_path = task_folder / (file_path.stem + ".json")
-    txt_path = task_folder / (file_path.stem + ".txt")
+    json_path = task_folder / (task_id.stem + ".json")
+    txt_path = task_folder / (task_id.stem + ".txt")
 
     formatter = TranscriptFormatter(
         segments=result["segments"],
