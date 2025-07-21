@@ -3,10 +3,10 @@ from functools import wraps
 import uuid
 import time
 from pathlib import Path
-import hashlib
 from dotenv import load_dotenv
 import os
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter, TaskDownloader
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter, TaskDownloader, ValueExistUtil
+from classes import TokenGenerate
 load_dotenv()
 
 model=ModelX()
@@ -15,6 +15,7 @@ db=DataBase()
 file_manager=FileManager()
 rabbitmq = RabbitMQ()
 rabbit = RabbitMQ()
+check_util = ValueExistUtil()
 app = Flask(__name__)
 
 def header_check(f):
@@ -42,16 +43,20 @@ def header_check(f):
 
 @app.route("/authorization", methods=["POST"])
 def authorization():
+    generator=TokenGenerate()
     user=request.get_json()
-    if not user:
-        return jsonify({"Ошибка":"В теле запроса отсутствует JSON-Body"}), 400
+
+    error=check_util.check_value(user,"В теле запроса отсутствует JSON-Body",400)
+    if error:
+        return error
+    
     username=user.get("username")
+
+    error=check_util.check_value(username, "Имя для пользователя не указано", 400)
+    if error:
+        return error
     
-    if not username:
-        return jsonify({"Ошибка":"Имя для пользователя не указано"}), 400
-    
-    raw_token = str(uuid.uuid4())
-    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+    hashed_token = generator.generate_token()
 
     time_limit = os.getenv("time_limit") 
 
@@ -76,27 +81,29 @@ def authorization():
 @app.route("/task", methods=["POST"])
 @header_check
 def push_task():
+    generator=TokenGenerate()
     allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac"]
     audio_files = request.files.getlist("audio")
 
-    if not audio_files:
-        return jsonify({"Ошибка":"Ауидо не найдены"})
+    error=check_util.check_value(audio_files,"Ауидо не найдены", 400)
+    if error:
+        return error
 
     token = getattr(request, "token", None)
     username = getattr(request, "username", None)
 
     task_list=[]
-
     for audio in audio_files:
+
         if not audio or audio.filename == "":
             continue
         audio_type=audio.content_type
 
         if audio_type not in allowed_types:
-            return jsonify({"Ошибка":"Неподдерживаемый формат аудио"})
+            return jsonify({"Ошибка":"Неподдерживаемый формат аудио"}) , 400
         
         file_manager.makedir("audio_data")
-        task_id = str(uuid.uuid4())
+        task_id = generator.generate_task_id()
         save_path = file_manager.get_file_path("audio_data", username, task_id, audio.filename)
         audio.save(save_path)
         file_size = file_manager.get_file_size(save_path)
@@ -231,7 +238,6 @@ def download_task():
         return jsonify({"Ошибка": str(e)}), 400
     except Exception as e:
         return jsonify({"Ошибка": f"Непредвиденная ошибка: {e}"}), 500
-
 
 def transcriptor(file_path,task_id):
     sql_update = "UPDATE task SET status = %s WHERE task_id = %s"

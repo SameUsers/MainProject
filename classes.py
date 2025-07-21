@@ -11,9 +11,13 @@ from datetime import datetime
 import logging
 import pika
 import json
+import uuid
+import hashlib
 import random
+from typing import Any, Optional, Tuple
+from flask.wrappers import Response
 import time
-from flask import send_file
+from flask import send_file, jsonify
 import threading
 from huggingface_hub import login
 from whisperx.diarize import DiarizationPipeline
@@ -419,3 +423,23 @@ class TaskDownloader:
             return send_file(path, mimetype="application/json", as_attachment=True)
         else:
             raise ValueError("Поддерживаются только типы txt и json")
+           
+class ValueExistUtil:
+    def __init__(self):
+        pass
+
+    def check_value(self, param: Any, message: str, code: int) -> Optional[Tuple[Response, int]]:
+        if not param:
+            return jsonify({"Ошибка": message}), code
+        return None
+    
+class TokenGenerate:
+    def __init__(self):
+        self.raw_token = str(uuid.uuid4())
+        self.hashed_token = hashlib.sha256(self.raw_token.encode()).hexdigest()
+
+    def generate_token(self):
+        return self.hashed_token
+    
+    def generate_task_id(self):
+        return str(uuid.uuid4())
