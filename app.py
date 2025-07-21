@@ -6,7 +6,7 @@ from pathlib import Path
 import hashlib
 from dotenv import load_dotenv
 import os
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter, TaskDownloader
 load_dotenv()
 
 model=ModelX()
@@ -200,9 +200,40 @@ def get_task_status():
             "total_pages": (total_tasks + per_page - 1) // per_page,
             "tasks": result
         })
+    
+@app.route("/download", methods=["GET"])
+@header_check
+def download_task():
+    token = getattr(request, "token", None)
+    username = getattr(request, "username", None)
+
+    task_id = request.args.get("task_id")
+    file_type = request.args.get("type")
+
+    if not task_id or not file_type:
+        return jsonify({"Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"}), 400
+
+    sql = """
+        SELECT * FROM task
+        WHERE task_id = %s AND username = %s AND token = %s
+        LIMIT 1
+    """
+    task = db.execute(sql, params=[task_id, username, token], fetch=True)
+    if not task:
+        return jsonify({"Ошибка": "Задача не найдена или доступ запрещён"}), 404
+
+    try:
+        downloader = TaskDownloader()
+        return downloader.download(username, task_id, file_type.lower())
+    except FileNotFoundError as e:
+        return jsonify({"Ошибка": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"Ошибка": str(e)}), 400
+    except Exception as e:
+        return jsonify({"Ошибка": f"Непредвиденная ошибка: {e}"}), 500
+
 
 def transcriptor(file_path,task_id):
-
     sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
     status = "processing"
     db.execute(sql_update, (status, task_id))

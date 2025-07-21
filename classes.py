@@ -13,6 +13,7 @@ import pika
 import json
 import random
 import time
+from flask import send_file
 import threading
 from huggingface_hub import login
 from whisperx.diarize import DiarizationPipeline
@@ -394,3 +395,27 @@ class TranscriptFormatter:
                     f.write(f"{speaker}:\n")
                     last_speaker = speaker
                 f.write(f"{time_str} - {text}\n")
+
+class TaskDownloader:
+    def __init__(self, base_dir: str = "audio_data"):
+        self.base_dir = Path(base_dir)
+
+    def get_user_task_dir(self, username: str, task_id: str) -> Path:
+        return self.base_dir / username / task_id
+
+    def get_file_path(self, username: str, task_id: str, ext: str) -> Path:
+        task_dir = self.get_user_task_dir(username, task_id)
+        file_path = task_dir / f"{task_id}{ext}"
+        if not file_path.exists():
+            raise FileNotFoundError(f"Файл не найден: {file_path}")
+        return file_path
+
+    def download(self, username: str, task_id: str, file_type: str):
+        if file_type == "txt":
+            path = self.get_file_path(username, task_id, ".txt")
+            return send_file(path, mimetype="text/plain", as_attachment=True)
+        elif file_type == "json":
+            path = self.get_file_path(username, task_id, ".json")
+            return send_file(path, mimetype="application/json", as_attachment=True)
+        else:
+            raise ValueError("Поддерживаются только типы txt и json")
