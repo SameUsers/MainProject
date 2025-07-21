@@ -20,17 +20,17 @@ def header_check(f):
         header = request.headers.get("Authorization")
 
         if not header:
-            return jsonify({"Ошибка":"Отсутствует токен для авторизации в запросе"})
+            return jsonify({"Ошибка":"Отсутствует токен для авторизации в запросе"}), 403
         
         sql_check="""SELECT * FROM users WHERE token = %s;"""
 
         check=db.execute(sql_check,(header,),fetch=True)
-        print(check)
-        data=check[0]
 
         if not check:
-            return jsonify({"Ошибка":"Недействительный токен"})
+            return jsonify({"Ошибка":"Недействительный токен"}), 403
                 
+        data=check[0]
+
         request.token = header
         request.username = data["username"]
 
@@ -127,6 +127,9 @@ def push_task():
 
 
 def transcriptor(file_path):
+    sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
+    status = "processing"
+    db.execute(sql_update, (status, file_path))
     to_transcription=Transcribe(model,audio_path=file_path)
     result=to_transcription.transcribe()
     print(result)

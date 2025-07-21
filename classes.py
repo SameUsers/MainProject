@@ -12,6 +12,7 @@ import logging
 import pika
 import json
 import threading
+from huggingface_hub import login
 
 class ModelX:
     def __init__(self, device="cpu", compute_type="int8", model_size="large-v3"):
@@ -64,8 +65,10 @@ class Transcribe(ModelX):
         )
 
     def diarize(self):
+        token_hf="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"
+        login(token_hf)
         diarize_model = DiarizationPipeline(
-            use_auth_token="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",
+            use_auth_token=token_hf,
             device=self.device
         )
         diarize_segments = diarize_model(self.audio)
