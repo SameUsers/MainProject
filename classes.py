@@ -11,6 +11,7 @@ from datetime import datetime
 import logging
 import pika
 import json
+import time
 import threading
 from huggingface_hub import login
 from whisperx.diarize import DiarizationPipeline
@@ -226,35 +227,68 @@ class FileManager:
 class RabbitMQ:
     def __init__(self, queue_name='task', host='rabbitmq', port=5672, username='guest', password='guest'):
         self.queue_name = queue_name
-        self.credentials = pika.PlainCredentials(username, password)
-        self.connection_params = pika.ConnectionParameters(host=host, port=port, credentials=self.credentials)
-        self.connection = pika.BlockingConnection(self.connection_params)
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=self.queue_name, durable=True)
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self._connect()
+
+    def _connect(self):
+        while True:
+            try:
+                credentials = pika.PlainCredentials(self.username, self.password)
+                params = pika.ConnectionParameters(host=self.host, port=self.port, credentials=credentials, heartbeat=60)
+                self.connection = pika.BlockingConnection(params)
+                self.channel = self.connection.channel()
+                self.channel.queue_declare(queue=self.queue_name, durable=True)
+                logging.info("[RabbitMQ] Подключение установлено.")
+                break
+            except Exception as e:
+                logging.error(f"[RabbitMQ] Ошибка подключения: {e}. Повтор через 5 секунд...")
+                time.sleep(5)
 
     def publish(self, message: dict):
-        self.channel.basic_publish(
-            exchange='',
-            routing_key=self.queue_name,
-            body=json.dumps(message),
-            properties=pika.BasicProperties(
-                delivery_mode=2
+        try:
+            if not self.channel.is_open:
+                self._connect()
+            self.channel.basic_publish(
+                exchange='',
+                routing_key=self.queue_name,
+                body=json.dumps(message),
+                properties=pika.BasicProperties(delivery_mode=2)
             )
-        )
-        logging.info(f"[RabbitMQ] Задача отправлена: {message}")
+            logging.info(f"[RabbitMQ] Задача отправлена: {message}")
+        except Exception as e:
+            logging.error(f"[RabbitMQ] Ошибка при публикации: {e}")
 
-    def consume(self, callback):
+    def consume_forever(self, callback):
+        while True:
+            try:
+                self._consume(callback)
+            except pika.exceptions.StreamLostError as e:
+                logging.warning(f"[RabbitMQ] Соединение потеряно: {e}. Переподключение...")
+                self._connect()
+            except Exception as e:
+                logging.error(f"[RabbitMQ] Ошибка в consume_forever: {e}")
+                time.sleep(3)
+
+    def _consume(self, callback):
         def wrapper(ch, method, properties, body):
             try:
                 data = json.loads(body)
                 logging.info(f"[RabbitMQ] Задача получена: {data}")
-                callback(data)  
-                ch.basic_ack(delivery_tag=method.delivery_tag)
+                callback(data)
+                if ch.is_open:
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
             except Exception as e:
                 logging.error(f"[RabbitMQ] Ошибка при обработке задачи: {e}")
-                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                if ch.is_open:
+                    try:
+                        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                    except Exception as nack_err:
+                        logging.error(f"[RabbitMQ] Ошибка при nack: {nack_err}")
 
-        self.channel.basic_qos(prefetch_count=1)  # Один воркер – одна задача
+        self.channel.basic_qos(prefetch_count=1)
         self.channel.basic_consume(queue=self.queue_name, on_message_callback=wrapper)
         logging.info(f"[RabbitMQ] Ожидание задач в очереди '{self.queue_name}'...")
         self.channel.start_consuming()

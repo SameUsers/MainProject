@@ -130,16 +130,21 @@ def transcriptor(file_path):
     sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
     status = "processing"
     db.execute(sql_update, (status, file_path))
-    to_transcription=Transcribe(model,audio_path=file_path)
-    result=to_transcription.transcribe()
-    print(result)
     
+    to_transcription = Transcribe(model, audio_path=file_path)
+    result = to_transcription.transcribe()
+    print(result)
+
+    sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
+    status = "done"
+    db.execute(sql_update, (status, file_path))
+
 def task_process():
     def handle_task(message):
         transcriptor(message["file_path"])
-        
-    rabbit=RabbitMQ()
-    rabbit.consume(handle_task)
+
+    rabbit = RabbitMQ()
+    rabbit.consume_forever(handle_task)
 
 if __name__ == "__main__":
     transcriber=ThreadRunner(task_process)
