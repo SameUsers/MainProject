@@ -85,7 +85,7 @@ class DataBase:
     def __init__(self, 
                  POSTGRES_USER="admin", 
                  POSTGRES_PASSWORD="adminpass", 
-                 POSTGRES_HOST="localhost", 
+                 POSTGRES_HOST="postgres_db", 
                  POSTGRES_PORT="5432", 
                  POSTGRES_DB="synpatic"):
         self.POSTGRES_USER = POSTGRES_USER
@@ -218,7 +218,7 @@ class FileManager:
         raise ValueError("Не удалось определить длительность аудио.")
 
 class RabbitMQ:
-    def __init__(self, queue_name='task', host='localhost', port=5672, username='guest', password='guest'):
+    def __init__(self, queue_name='task', host='rabbitmq', port=5672, username='guest', password='guest'):
         self.queue_name = queue_name
         self.credentials = pika.PlainCredentials(username, password)
         self.connection_params = pika.ConnectionParameters(host=host, port=port, credentials=self.credentials)
