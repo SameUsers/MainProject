@@ -12,6 +12,7 @@ model.load()
 db=DataBase()
 file_manager=FileManager()
 rabbitmq = RabbitMQ()
+rabbit = RabbitMQ()
 app = Flask(__name__)
 
 def header_check(f):
@@ -119,9 +120,6 @@ def push_task():
         db.execute(sql_data, fetch=False)
         db.insert("task", task_data)
 
-
-
-
     return jsonify({"Результат":"Все задачи были успешно поставлны в очередь"})
 
 
@@ -130,7 +128,7 @@ def transcriptor(file_path):
     sql_update = "UPDATE task SET status = %s WHERE file_path = %s"
     status = "processing"
     db.execute(sql_update, (status, file_path))
-    
+
     to_transcription = Transcribe(model, audio_path=file_path)
     result = to_transcription.transcribe()
     print(result)
@@ -143,7 +141,6 @@ def task_process():
     def handle_task(message):
         transcriptor(message["file_path"])
 
-    rabbit = RabbitMQ()
     rabbit.consume_forever(handle_task)
 
 if __name__ == "__main__":
