@@ -1,12 +1,12 @@
 from flask import Flask, request,jsonify
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe
+from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExistUtil
 from functools import wraps
-import uuid
 import time
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, TranscriptFormatter, TaskDownloader, ValueExistUtil
-from classes import TokenGenerate
+
 load_dotenv()
 
 model=ModelX()
