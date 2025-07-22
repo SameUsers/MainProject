@@ -6,6 +6,12 @@ def register_swagger_path(swagger):
         description="""
             Создает токен авторизации для нового пользователя.
             Принимает username, возвращает token и time_limit.
+
+            Запрос необходимо подавать с телом JSON формата:
+            {
+                "username":"Name"
+            }
+
         """,
         request_body={
             "required": True,
@@ -55,6 +61,13 @@ def register_swagger_path(swagger):
     description="""
     Принимает один или несколько аудиофайлов (multipart/form-data) и ставит задачи в очередь.
     Проверяет наличие времени у пользователя, обновляет лимит и сохраняет задачи в БД.
+    Отправлять запрос необходимо указывая токен в Headers в формате:
+    Authorization:<token>
+
+    Само тело запроса формируется следующим образом:
+    {
+        "audio": <multipart/formdata>
+    }
     """,
     request_body={
         "required": True,
@@ -125,9 +138,12 @@ def register_swagger_path(swagger):
     method="get",
     summary="Получение статуса задач",
     description="""
-    Возвращает статус задачи по task_id, либо список всех задач пользователя с пагинацией.<br>
-    Требуется заголовок Authorization: <token>.<br>
+    Возвращает статус задачи по task_id, либо список всех задач пользователя с пагинацией.
+
+    Требуется заголовок Authorization: <token>.
+
     Если передан task_id, вернёт одну задачу. Без task_id — список задач с постраничным выводом.
+
     """,
     parameters=[
         {
@@ -209,8 +225,10 @@ def register_swagger_path(swagger):
     method="get",
     summary="Скачать результат обработки",
     description="""
-    Позволяет скачать результат обработки задачи в формате txt или json.<br>
-    Требуется заголовок Authorization: <token>.<br>
+    Позволяет скачать результат обработки задачи в формате txt или json.
+    
+    Требуется заголовок Authorization: <token>.
+
     Обязательные параметры: task_id и type (один из txt, `json`).
     """,
     parameters=[
