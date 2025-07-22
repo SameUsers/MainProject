@@ -482,7 +482,7 @@ class SwaggerDocs:
                         "type": "http",
                         "scheme": "bearer",
                         "bearerFormat": "JWT",
-                        "description": "Введите токен в формате: Bearer <token>"
+                        "description": "Введите токен без Bearer. В этой среде он подставится автоматически"
                     }
                 }
             },
