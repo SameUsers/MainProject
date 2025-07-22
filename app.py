@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-
 load_dotenv()
 
 model=ModelX()
@@ -23,82 +22,55 @@ db.start_initial()
 
 def register_swagger_path(swagger):
     swagger.add_path(
-    path="/authorization",
-    method="post",
-    summary="Авторизация пользователя",
-    description="""
-        Создает токен авторизации для нового пользователя. <br>
-        Принимает username, возвращает token и time_limit.
-    """,
-    request_body={
-        "required": True,
-        "content": {
-            "application/json": {
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "username": {
-                            "type": "string",
-                            "example": "Victor"
-                        }
-                    },
-                    "required": ["username"]
-                }
-            }
-        }
-    },
-    responses={
-        "200": {
-            "description": "Токен успешно создан",
+        path="/authorization",
+        method="post",
+        summary="Авторизация пользователя",
+        description="""
+            Создает токен авторизации для нового пользователя. <br>
+            Принимает username, возвращает token и time_limit.
+        """,
+        request_body={
+            "required": True,
             "content": {
                 "application/json": {
-                    "example": {
-                        "username": "Victor",
-                        "token": "4d3fcbcb9f4f45ae9d9f9b9...",
-                        "time_limit": "600"
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "username": {
+                                "type": "string",
+                                "example": "Victor"
+                            }
+                        },
+                        "required": ["username"]
                     }
                 }
             }
         },
-        "400": {
-            "description": "Ошибка в теле запроса",
-            "content": {
-                "application/json": {
-                    "example": {"Ошибка": "Имя для пользователя не указано"}
+        responses={
+            "200": {
+                "description": "Токен успешно создан",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "username": "Victor",
+                            "token": "4d3fcbcb9f4f45ae9d9f9b9...",
+                            "time_limit": "600"
+                        }
+                    }
+                }
+            },
+            "400": {
+                "description": "Ошибка в теле запроса",
+                "content": {
+                    "application/json": {
+                        "example": {"Ошибка": "Имя для пользователя не указано"}
+                    }
                 }
             }
         }
-    }
-)
+    )
 
 register_swagger_path(swagger)
-
-
-@app.route("/docs")
-def swagger_ui_view():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Swagger UI</title>
-      <link href="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui.css" rel="stylesheet">
-    </head>
-    <body>
-      <div id="swagger-ui"></div>
-      <script src="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui-bundle.js"></script>
-      <script>
-        const ui = SwaggerUIBundle({
-          url: '/swagger.json_view',
-          dom_id: '#swagger-ui',
-        });
-      </script>
-    </body>
-    </html>
-    """
-
-@app.route("/swagger.json_view")
-def swagger_json():
-    return jsonify(swagger.to_dict())
 
 def header_check(f):
     @wraps(f)

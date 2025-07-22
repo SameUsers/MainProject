@@ -523,3 +523,6 @@ class SwaggerDocs:
             path_item["requestBody"] = request_body
 
         self.openapi["paths"][path][method] = path_item
+
+    def to_dict(self):
+        return self.openapi
