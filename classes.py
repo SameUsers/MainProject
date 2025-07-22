@@ -475,8 +475,24 @@ class SwaggerDocs:
                 "version": version,
                 "description": description
             },
-            "paths": {}
+            "paths": {},
+            "components": {
+                "securitySchemes": {
+                    "ApiTokenAuth": {
+                        "type": "apiKey",
+                        "in": "header",
+                        "name": "Authorization",
+                        "description": "Введите токен в формате: Authorization: <token>"
+                    }
+                }
+            },
+            "security": [
+                {
+                    "ApiTokenAuth": []
+                }
+            ]
         }
+
         if app is not None:
             self.init_app(app)
 
