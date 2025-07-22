@@ -67,9 +67,8 @@ def authorization():
     check_sql = "SELECT 1 FROM users WHERE username = %s LIMIT 1"
     dublicate = db.execute(check_sql, params=[username], fetch=True)
 
-    error=check_util.check_value(dublicate, "Ошибка при добавлении пользователя в базу данных", 400)
-    if error:
-        return error
+    if dublicate:
+        return jsonify({"Ошибка": "Пользователь с таким именем уже существует"}), 400
     
     hashed_token = generator.generate_token()
     time_limit = os.getenv("time_limit") 
