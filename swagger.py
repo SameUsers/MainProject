@@ -55,252 +55,226 @@ def register_swagger_path(swagger):
     )
 
     swagger.add_path(
-    path="/task",
-    method="post",
-    summary="Отправка аудиофайлов в очередь обработки",
-    description="""
-    Принимает один или несколько аудиофайлов (multipart/form-data) и ставит задачи в очередь.
-    Проверяет наличие времени у пользователя, обновляет лимит и сохраняет задачи в БД.
-    Отправлять запрос необходимо указывая токен в Headers в формате:
-    Authorization:<token>
-
-    Само тело запроса формируется следующим образом:
-    {
-        "audio": <multipart/formdata>
-    }
-    """,
-    request_body={
-        "required": True,
-        "content": {
-            "multipart/form-data": {
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "audio": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "format": "binary"
-                            },
-                            "description": "Один или несколько аудиофайлов"
-                        }
-                    },
-                    "required": ["audio"]
-                }
-            }
-        }
-    },
-    responses={
-        "200": {
-            "description": "Успешная постановка задачи в очередь",
+        path="/task",
+        method="post",
+        summary="Отправка аудиофайлов в очередь обработки",
+        description="""
+        Принимает один или несколько аудиофайлов (multipart/form-data) и ставит задачи в очередь.
+        Проверяет наличие времени у пользователя, обновляет лимит и сохраняет задачи в БД.
+        """,
+        request_body={
+            "required": True,
             "content": {
-                "application/json": {
-                    "example": [
-                        {
-                            "task_id": "abc123",
-                            "file_name": "audio1.wav",
-                            "remaining_time": 540
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "audio": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "format": "binary"
+                                },
+                                "description": "Один или несколько аудиофайлов"
+                            }
                         },
-                        {
-                            "task_id": "def456",
-                            "file_name": "audio2.wav",
-                            "remaining_time": 480
-                        }
-                    ]
-                }
-            }
-        },
-        "400": {
-            "description": "Ошибка валидации или недостаточно времени",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "invalid_format": {
-                            "summary": "Неподдерживаемый формат",
-                            "value": {"Ошибка": "Неподдерживаемый формат аудио"}
-                        },
-                        "not_enough_time": {
-                            "summary": "Недостаточно времени",
-                            "value": {"Ошибка": "Недостаточно времени. Осталось: 10 сек, требуется: 25 сек."}
-                        },
-                        "no_audio": {
-                            "summary": "Аудио не найдены",
-                            "value": {"Ошибка": "Ауидо не найдены"}
-                        }
+                        "required": ["audio"]
                     }
                 }
             }
-        }
-    },
-    security=[{"ApiTokenAuth": []}])
-    swagger.add_path(
-    path="/status",
-    method="get",
-    summary="Получение статуса задач",
-    description="""
-    Возвращает статус задачи по task_id, либо список всех задач пользователя с пагинацией.
-
-    Требуется заголовок Authorization: <token>.
-
-    Если передан task_id, вернёт одну задачу. Без task_id — список задач с постраничным выводом.
-
-    """,
-    parameters=[
-        {
-            "name": "task_id",
-            "in": "query",
-            "required": False,
-            "description": "ID конкретной задачи",
-            "schema": {
-                "type": "string",
-                "example": "abc123"
-            }
         },
-        {
-            "name": "page",
-            "in": "query",
-            "required": False,
-            "description": "Номер страницы для пагинации (по умолчанию 1)",
-            "schema": {
-                "type": "integer",
-                "example": 1
-            }
-        }
-    ],
-    responses={
-        "200": {
-            "description": "Успешный ответ с задачами или статусом одной задачи",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "single_task": {
-                            "summary": "Одна задача",
-                            "value": {
+        responses={
+            "200": {
+                "description": "Успешная постановка задачи в очередь",
+                "content": {
+                    "application/json": {
+                        "example": [
+                            {
                                 "task_id": "abc123",
                                 "file_name": "audio1.wav",
-                                "status": "Completed",
-                                "username": "Victor"
+                                "remaining_time": 540
+                            },
+                            {
+                                "task_id": "def456",
+                                "file_name": "audio2.wav",
+                                "remaining_time": 480
                             }
-                        },
-                        "paginated": {
-                            "summary": "Список задач",
-                            "value": {
-                                "page": 1,
-                                "per_page": 10,
-                                "total_tasks": 2,
-                                "total_pages": 1,
-                                "tasks": [
-                                    {
-                                        "task_id": "abc123",
-                                        "file_name": "audio1.wav",
-                                        "status": "Completed"
-                                    },
-                                    {
-                                        "task_id": "def456",
-                                        "file_name": "audio2.wav",
-                                        "status": "Queued"
-                                    }
-                                ]
+                        ]
+                    }
+                }
+            },
+            "400": {
+                "description": "Ошибка валидации или недостаточно времени",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "invalid_format": {
+                                "summary": "Неподдерживаемый формат",
+                                "value": {"Ошибка": "Неподдерживаемый формат аудио"}
+                            },
+                            "not_enough_time": {
+                                "summary": "Недостаточно времени",
+                                "value": {"Ошибка": "Недостаточно времени. Осталось: 10 сек, требуется: 25 сек."}
+                            },
+                            "no_audio": {
+                                "summary": "Аудио не найдены",
+                                "value": {"Ошибка": "Аудио не найдены"}
                             }
                         }
                     }
                 }
             }
         },
-        "404": {
-            "description": "Задача не найдена",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "Ошибка": "Задача не найдена"
-                    }
-                }
-            }
-        }
-    },
-    security=[{"ApiTokenAuth": []}]
-)
-    swagger.add_path(
-    path="/download",
-    method="get",
-    summary="Скачать результат обработки",
-    description="""
-    Позволяет скачать результат обработки задачи в формате txt или json.
-    
-    Требуется заголовок Authorization: <token>.
+        security=[{"BearerAuth": []}]
+    )
 
-    Обязательные параметры: task_id и type (один из txt, `json`).
-    """,
-    parameters=[
-        {
-            "name": "task_id",
-            "in": "query",
-            "required": True,
-            "description": "ID задачи, результат которой необходимо скачать",
-            "schema": {
-                "type": "string",
-                "example": "abc123"
+    swagger.add_path(
+        path="/status",
+        method="get",
+        summary="Получение статуса задач",
+        description="""
+        Возвращает статус задачи по task_id, либо список всех задач пользователя с пагинацией.<br>
+        Требуется заголовок Authorization: Bearer &lt;token&gt;.<br>
+        """,
+        parameters=[
+            {
+                "name": "task_id",
+                "in": "query",
+                "required": False,
+                "description": "ID конкретной задачи",
+                "schema": {"type": "string", "example": "abc123"}
+            },
+            {
+                "name": "status",
+                "in": "query",
+                "required": False,
+                "description": "Фильтрация задач по статусу: queue, process, done, error",
+                "schema": {"type": "string", "example": "done"}
+            },
+            {
+                "name": "page",
+                "in": "query",
+                "required": False,
+                "description": "Номер страницы (по умолчанию 1)",
+                "schema": {"type": "integer", "example": 1}
+            },
+            {
+                "name": "per_page",
+                "in": "query",
+                "required": False,
+                "description": "Количество задач на страницу (по умолчанию 10)",
+                "schema": {"type": "integer", "example": 10}
             }
-        },
-        {
-            "name": "type",
-            "in": "query",
-            "required": True,
-            "description": "Тип файла: txt или `json`",
-            "schema": {
-                "type": "string",
-                "enum": ["txt", "json"],
-                "example": "json"
-            }
-        }
-    ],
-    responses={
-        "200": {
-            "description": "Файл успешно найден и будет возвращён как attachment (скачивание)"
-        },
-        "400": {
-            "description": "Неверные параметры запроса или тип файла",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_parameters": {
-                            "summary": "Не указан task_id или type",
-                            "value": {"Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"}
-                        },
-                        "invalid_type": {
-                            "summary": "Неверный тип файла",
-                            "value": {"Ошибка": "Недопустимый тип файла. Разрешены: txt, json"}
+        ],
+        responses={
+            "200": {
+                "description": "Успешный ответ со статусами задач",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "tasks": {
+                                "summary": "Список задач",
+                                "value": {
+                                    "status": "done",
+                                    "page": 1,
+                                    "per_page": 10,
+                                    "total_tasks": 2,
+                                    "total_pages": 1,
+                                    "tasks": [
+                                        {"task_id": "abc123"},
+                                        {"task_id": "def456"}
+                                    ]
+                                }
+                            }
                         }
                     }
                 }
+            },
+            "400": {
+                "description": "Ошибка фильтрации по статусу",
+                "content": {
+                    "application/json": {
+                        "example": {"error": "Некорректный статус. Допустимые значения: queue, process, done, error"}
+                    }
+                }
             }
         },
-        "404": {
-            "description": "Задача не найдена или файл отсутствует",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "not_found": {
-                            "summary": "Файл или задача не найдены",
-                            "value": {"Ошибка": "Задача не найдена или доступ запрещён"}
-                        },
-                        "file_missing": {
-                            "summary": "Файл не найден на диске",
-                            "value": {"Ошибка": "Файл не найден"}
+        security=[{"BearerAuth": []}]
+    )
+
+    swagger.add_path(
+        path="/download",
+        method="get",
+        summary="Скачать результат обработки",
+        description="""
+        Позволяет скачать результат обработки задачи в формате txt или json.<br>
+        Требуется заголовок Authorization: Bearer &lt;token&gt;.
+        """,
+        parameters=[
+            {
+                "name": "task_id",
+                "in": "query",
+                "required": True,
+                "description": "ID задачи, результат которой необходимо скачать",
+                "schema": {"type": "string", "example": "abc123"}
+            },
+            {
+                "name": "type",
+                "in": "query",
+                "required": True,
+                "description": "Тип файла: txt или json",
+                "schema": {
+                    "type": "string",
+                    "enum": ["txt", "json"],
+                    "example": "json"
+                }
+            }
+        ],
+        responses={
+            "200": {"description": "Файл успешно найден"},
+            "400": {
+                "description": "Неверные параметры",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "missing_parameters": {
+                                "summary": "Отсутствуют параметры",
+                                "value": {"Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"}
+                            },
+                            "invalid_type": {
+                                "summary": "Неверный тип",
+                                "value": {"Ошибка": "Недопустимый тип файла. Разрешены: txt, json"}
+                            }
                         }
                     }
                 }
-            }
-        },
-        "500": {
-            "description": "Внутренняя ошибка сервера",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "Ошибка": "Непредвиденная ошибка: ..."
+            },
+            "404": {
+                "description": "Файл или задача не найдены",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "not_found": {
+                                "summary": "Задача или файл не найдены",
+                                "value": {"Ошибка": "Задача не найдена или доступ запрещён"}
+                            },
+                            "file_missing": {
+                                "summary": "Файл отсутствует",
+                                "value": {"Ошибка": "Файл не найден"}
+                            }
+                        }
+                    }
+                }
+            },
+            "500": {
+                "description": "Ошибка сервера",
+                "content": {
+                    "application/json": {
+                        "example": {"Ошибка": "Непредвиденная ошибка: ..."}
                     }
                 }
             }
-        }
-    },
-    security=[{"ApiTokenAuth": []}])
+        },
+        security=[{"BearerAuth": []}]
+    )
+    

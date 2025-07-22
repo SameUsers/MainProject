@@ -1,5 +1,5 @@
 from flask import Flask, request,jsonify
-from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe
+from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe, Logger
 from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExistUtil, SwaggerDocs
 from swagger import register_swagger_path
 from functools import wraps
@@ -16,14 +16,17 @@ file_manager=FileManager()
 rabbitmq = RabbitMQ()
 rabbit = RabbitMQ()
 check_util = ValueExistUtil()
+logger_app=Logger("app").get_logger()
+logger_transcription=Logger().get_logger()
 
 app = Flask(__name__)
 
 swagger=SwaggerDocs(app)
 
-
+logger_app.info("Инициализация таблиц в Postgres")
 db.start_initial()
-
+logger_app.info("Таблицы успешно инициализированы")
+logger_app.info("Таблицы успешно инициализированы")
 register_swagger_path(swagger)
 
 def header_check(f):
@@ -134,7 +137,7 @@ def push_task():
             "content_type":audio_type,
             "file_name":audio.filename,
             "task_id" : task_id,
-            "status":"Queued"
+            "status":"80"
         }
 
         rabbitmq.publish(task_data)
@@ -151,58 +154,6 @@ def push_task():
 
     return jsonify(task_list)
 
-@app.route("/status", methods=["GET"])
-@header_check
-def get_task_status():
-
-    token = getattr(request, "token", None)
-    username = getattr(request, "username", None)
-
-    task_id = request.args.get("task_id")
-    page = int(request.args.get("page", 1))
-    per_page = 10
-    offset = (page - 1) * per_page
-
-    if task_id:
-        sql = """
-            SELECT * FROM task
-            WHERE task_id = %s AND username = %s AND token = %s
-            LIMIT 1
-        """
-
-        result = db.execute(sql, params=[task_id, username, token], fetch=True)
-        if not result:
-            return jsonify({"Ошибка": "Задача не найдена"}), 404
-        return jsonify(result[0])
-    
-    else:
-
-        sql = """
-            SELECT * FROM task
-            WHERE username = %s AND token = %s
-            ORDER BY id DESC
-            LIMIT %s OFFSET %s
-        """
-
-        result = db.execute(sql, params=[username, token, per_page, offset], fetch=True)
-
-
-        count_sql = """
-            SELECT COUNT(*) FROM task
-            WHERE username = %s AND token = %s
-        """
-
-        count_result = db.execute(count_sql, params=[username, token], fetch=True)
-        total_tasks = count_result[0]['count'] if count_result else 0
-
-        return jsonify({
-            "page": page,
-            "per_page": per_page,
-            "total_tasks": total_tasks,
-            "total_pages": (total_tasks + per_page - 1) // per_page,
-            "tasks": result
-        })
-    
 @app.route("/download", methods=["GET"])
 @header_check
 def download_task():
@@ -233,33 +184,106 @@ def download_task():
         return jsonify({"Ошибка": str(e)}), 400
     except Exception as e:
         return jsonify({"Ошибка": f"Непредвиденная ошибка: {e}"}), 500
+    
+@app.route("/status", methods=["GET"])
+@header_check
+def get_tasks_by_status():
+    token = getattr(request, "token", None)
+    username = getattr(request, "username", None)
 
-def transcriptor(file_path,task_id):
-    sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
-    status = "processing"
-    db.execute(sql_update, (status, task_id))
+    status_map = {
+        "queue": "80",
+        "process": "100",
+        "done": "200",
+        "error": "501"
+    }
 
-    to_transcription = Transcribe(model, audio_path=file_path)
-    result = to_transcription.transcribe()
+    status_name = request.args.get("status", "").lower()
+    if status_name not in status_map:
+        return jsonify({
+            "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
+        }), 400
 
-    file_path = Path(file_path)
-    task_folder = file_path.parent
-    json_path = task_folder / f"{task_id}.json"
-    txt_path = task_folder / f"{task_id}.txt"
+    status_code = status_map[status_name]
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 10))
+    offset = (page - 1) * per_page
 
-    formatter = TranscriptFormatter(
-        segments=result["segments"],
-        json_path=json_path,
-        txt_path=txt_path,
-        start_time=time.time())
+    sql = """
+        SELECT task_id FROM task
+        WHERE username = %s AND token = %s AND status = %s
+        ORDER BY id DESC
+        LIMIT %s OFFSET %s
+    """
+    result = db.execute(sql, params=[username, token, status_code, per_page, offset], fetch=True)
 
-    formatter.format_segments()
-    formatter.save()
+    count_sql = """
+        SELECT COUNT(*) FROM task
+        WHERE username = %s AND token = %s AND status = %s
+    """
+    count_result = db.execute(count_sql, params=[username, token, status_code], fetch=True)
+    total_tasks = count_result[0]['count'] if count_result else 0
+
+    return jsonify({
+        "status": status_name,
+        "page": page,
+        "per_page": per_page,
+        "total_tasks": total_tasks,
+        "total_pages": (total_tasks + per_page - 1) // per_page,
+        "tasks": result
+    })
+
+@app.route("/status/recognitions", methods=["GET"])
+@header_check
+def get_task_status():
+    token = getattr(request, "token", None)
+    username = getattr(request, "username", None)
+
+    task_id = request.args.get("task_id")
+
+    if not task_id:
+        return jsonify({"Ошибка": "Параметр 'task_id' обязателен"}), 400
+
+    sql = """
+        SELECT * FROM task
+        WHERE task_id = %s AND username = %s AND token = %s
+        LIMIT 1
+    """
+    result = db.execute(sql, params=[task_id, username, token], fetch=True)
+
+    if not result:
+        return jsonify({"Ошибка": "Задача не найдена"}), 404
+
+    return jsonify({"Статус" : result[0]["status"],
+                    "ID-задачи" : result[0]["task_id"]})
 
 
-    sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
-    status = "done"
-    db.execute(sql_update, (status, task_id))
+def transcriptor(file_path, task_id):
+    try:
+        sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
+        db.execute(sql_update, ("100", task_id))
+
+        to_transcription = Transcribe(model, audio_path=file_path)
+        result = to_transcription.transcribe()
+
+        file_path = Path(file_path)
+        task_folder = file_path.parent
+        json_path = task_folder / f"{task_id}.json"
+        txt_path = task_folder / f"{task_id}.txt"
+
+        formatter = TranscriptFormatter(
+            segments=result["segments"],
+            json_path=json_path,
+            txt_path=txt_path,
+            start_time=time.time()
+        )
+        formatter.format_segments()
+        formatter.save()
+
+        db.execute(sql_update, ("200", task_id))
+
+    except Exception as e:
+        db.execute("UPDATE task SET status = %s WHERE task_id = %s", ("501", task_id))
 
 def task_process():
     def handle_task(message):

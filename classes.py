@@ -203,7 +203,7 @@ class Logger:
                 log_path = Path(log_dir)
                 log_path.mkdir(parents=True, exist_ok=True)
 
-                log_file = log_path / f"{name}_{datetime.now().strftime('%Y-%m-%d')}.log"
+                log_file = log_path / f"{name}.log"
                 file_handler = logging.FileHandler(log_file, encoding="utf-8")
                 file_handler.setLevel(logging.DEBUG)
                 file_handler.setFormatter(formatter)
@@ -461,13 +461,13 @@ class TokenGenerate:
         self.hashed_token = hashlib.sha256(self.raw_token.encode()).hexdigest()
 
     def generate_token(self):
-        return self.hashed_token
+        return f"Bearer {self.hashed_token}"
     
     def generate_task_id(self):
         return str(uuid.uuid4())
     
 class SwaggerDocs:
-    def __init__(self, app=None, title="API Documentation", version="1.0.0", description="API docs"):
+    def init(self, app=None, title="API Documentation", version="1.0.0", description="API docs"):
         self.openapi = {
             "openapi": "3.0.0",
             "info": {
@@ -479,10 +479,10 @@ class SwaggerDocs:
             "components": {
                 "securitySchemes": {
                     "ApiTokenAuth": {
-                        "type": "apiKey",
-                        "in": "header",
-                        "name": "Authorization",
-                        "description": "Введите токен в формате: Authorization: <token>"
+                        "type": "http",
+                        "scheme": "bearer",
+                        "bearerFormat": "JWT",
+                        "description": "Введите токен в формате: Bearer <token>"
                     }
                 }
             },
