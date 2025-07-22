@@ -467,7 +467,7 @@ class TokenGenerate:
         return str(uuid.uuid4())
     
 class SwaggerDocs:
-    def init(self, app=None, title="API Documentation", version="1.0.0", description="API docs"):
+    def __init__(self, app=None, title="API Documentation", version="1.0.0", description="API docs"):
         self.openapi = {
             "openapi": "3.0.0",
             "info": {
