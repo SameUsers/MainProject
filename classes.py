@@ -523,7 +523,7 @@ class SwaggerDocs:
             </html>
             """
 
-    def add_path(self, path, method="get", summary="", description="", parameters=None, request_body=None, responses=None):
+    def add_path(self, path, method="get", summary="", description="", parameters=None, request_body=None, responses=None, security=None):
         method = method.lower()
         if path not in self.openapi["paths"]:
             self.openapi["paths"][path] = {}
@@ -538,7 +538,9 @@ class SwaggerDocs:
         if request_body:
             path_item["requestBody"] = request_body
 
-        self.openapi["paths"][path][method] = path_item
+        if security:
+            path_item["security"] = security
 
+        self.openapi["paths"][path][method] = path_item
     def to_dict(self):
         return self.openapi
