@@ -88,7 +88,7 @@ def swagger_ui_view():
       <script src="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui-bundle.js"></script>
       <script>
         const ui = SwaggerUIBundle({
-          url: '/swagger.json',
+          url: '/swagger.json_view',
           dom_id: '#swagger-ui',
         });
       </script>
@@ -96,7 +96,7 @@ def swagger_ui_view():
     </html>
     """
 
-@app.route("/swagger.json")
+@app.route("/swagger.json_view")
 def swagger_json():
     return jsonify(swagger.to_dict())
 
