@@ -6,6 +6,12 @@ def register_swagger_path(swagger):
         description="""
             Создает токен авторизации для нового пользователя.
             Принимает username, возвращает token и time_limit.
+
+            Запрос необходимо подавать с телом JSON формата:
+            {
+                "username":"Name"
+            }
+
         """,
         request_body={
             "required": True,
