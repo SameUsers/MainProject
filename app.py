@@ -17,7 +17,7 @@ rabbitmq = RabbitMQ()
 rabbit = RabbitMQ()
 check_util = ValueExistUtil()
 logger_app=Logger("app").get_logger()
-logger_transcription=Logger().get_logger()
+logger_transcription=Logger("transcription").get_logger()
 
 app = Flask(__name__)
 
