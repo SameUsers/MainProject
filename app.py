@@ -1,6 +1,6 @@
 from flask import Flask, request,jsonify
 from classes import DataBase, FileManager, RabbitMQ, ThreadRunner, ModelX, Transcribe
-from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExistUtil
+from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExistUtil, SwaggerDocs
 from functools import wraps
 import time
 from pathlib import Path
@@ -17,6 +17,88 @@ rabbitmq = RabbitMQ()
 rabbit = RabbitMQ()
 check_util = ValueExistUtil()
 app = Flask(__name__)
+swagger=SwaggerDocs(app)
+
+db.start_initial()
+
+def register_swagger_path(swagger):
+    swagger.add_path(
+    path="/authorization",
+    method="post",
+    summary="Авторизация пользователя",
+    description="""
+        Создает токен авторизации для нового пользователя. <br>
+        Принимает username, возвращает token и time_limit.
+    """,
+    request_body={
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "username": {
+                            "type": "string",
+                            "example": "Victor"
+                        }
+                    },
+                    "required": ["username"]
+                }
+            }
+        }
+    },
+    responses={
+        "200": {
+            "description": "Токен успешно создан",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "username": "Victor",
+                        "token": "4d3fcbcb9f4f45ae9d9f9b9...",
+                        "time_limit": "600"
+                    }
+                }
+            }
+        },
+        "400": {
+            "description": "Ошибка в теле запроса",
+            "content": {
+                "application/json": {
+                    "example": {"Ошибка": "Имя для пользователя не указано"}
+                }
+            }
+        }
+    }
+)
+
+register_swagger_path(swagger)
+
+
+@app.route("/docs")
+def swagger_ui():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Swagger UI</title>
+      <link href="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui.css" rel="stylesheet">
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist@4.18.3/swagger-ui-bundle.js"></script>
+      <script>
+        const ui = SwaggerUIBundle({
+          url: '/swagger.json',
+          dom_id: '#swagger-ui',
+        });
+      </script>
+    </body>
+    </html>
+    """
+
+@app.route("/swagger.json")
+def swagger_json():
+    return jsonify(swagger.to_dict())
 
 def header_check(f):
     @wraps(f)
@@ -66,14 +148,6 @@ def authorization():
         "time_limit": time_limit
     }
 
-    sql_data="""CREATE TABLE IF NOT EXISTS users(
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    token TEXT NOT NULL,
-    time_limit REAL)"""
-
-
-    db.execute(sql_data, fetch=False)
     db.insert("users", token_data)
 
     return jsonify(token_data)
@@ -134,16 +208,6 @@ def push_task():
 
         rabbitmq.publish(task_data)
 
-        sql_data="""CREATE TABLE IF NOT EXISTS task(
-        id SERIAL PRIMARY KEY,
-        username TEXT,
-        token TEXT,
-        file_path TEXT,
-        file_name TEXT,
-        content_type TEXT,
-        task_id TEXT,
-        status TEXT)"""
-        db.execute(sql_data, fetch=False)
         db.insert("task", task_data)
 
         response_message={

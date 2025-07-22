@@ -17,7 +17,7 @@ import random
 from typing import Any, Optional, Tuple
 from flask.wrappers import Response
 import time
-from flask import send_file, jsonify
+from flask import send_file, jsonify, request
 import threading
 from huggingface_hub import login
 from whisperx.diarize import DiarizationPipeline
@@ -158,6 +158,28 @@ class DataBase:
             placeholders=sql.SQL(', ').join(sql.Placeholder() * len(values))
         )
         return self.execute(query.as_string(self.connection), values)
+    
+    def start_initial(self):
+
+        sql_data="""CREATE TABLE IF NOT EXISTS users(
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    token TEXT NOT NULL,
+                    time_limit REAL)"""
+        self.execute(sql_data,fetch=False)
+
+
+        sql_data="""CREATE TABLE IF NOT EXISTS task(
+                    id SERIAL PRIMARY KEY,
+                    username TEXT,
+                    token TEXT,
+                    file_path TEXT,
+                    file_name TEXT,
+                    content_type TEXT,
+                    task_id TEXT,
+                    status TEXT)"""
+        
+        self.execute(sql_data, fetch=False)
 
 class Logger:
     def __init__(self, name: str, log_to_file: bool = True, log_dir: str = "logs"):
@@ -443,3 +465,61 @@ class TokenGenerate:
     
     def generate_task_id(self):
         return str(uuid.uuid4())
+    
+class SwaggerDocs:
+    def __init__(self, app=None, title="API Documentation", version="1.0.0", description="API docs"):
+        self.openapi = {
+            "openapi": "3.0.0",
+            "info": {
+                "title": title,
+                "version": version,
+                "description": description
+            },
+            "paths": {}
+        }
+        if app is not None:
+            self.init_app(app)
+
+    def init_app(self, app):
+        @app.route("/swagger.json")
+        def swagger_json():
+            return jsonify(self.openapi)
+
+        @app.route("/docs")
+        def swagger_ui():
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Swagger UI</title>
+                <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
+            </head>
+            <body>
+            <div id="swagger-ui"></div>
+            <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+            <script>
+            const ui = SwaggerUIBundle({
+                url: '/swagger.json',
+                dom_id: '#swagger-ui'
+            })
+            </script>
+            </body>
+            </html>
+            """
+
+    def add_path(self, path, method="get", summary="", description="", parameters=None, request_body=None, responses=None):
+        method = method.lower()
+        if path not in self.openapi["paths"]:
+            self.openapi["paths"][path] = {}
+
+        path_item = {
+            "summary": summary,
+            "description": description,
+            "parameters": parameters or [],
+            "responses": responses or {}
+        }
+
+        if request_body:
+            path_item["requestBody"] = request_body
+
+        self.openapi["paths"][path][method] = path_item
