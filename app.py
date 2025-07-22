@@ -210,7 +210,7 @@ def get_tasks_by_status():
     offset = (page - 1) * per_page
 
     sql = """
-        SELECT task_id FROM task
+        SELECT task_id,status FROM task
         WHERE username = %s AND token = %s AND status = %s
         ORDER BY id DESC
         LIMIT %s OFFSET %s
@@ -232,6 +232,7 @@ def get_tasks_by_status():
         "total_pages": (total_tasks + per_page - 1) // per_page,
         "tasks": result
     })
+
 
 @app.route("/status/recognitions", methods=["GET"])
 @header_check
