@@ -234,7 +234,7 @@ def get_tasks_by_status():
     })
 
 
-@app.route("/status/recognitions", methods=["GET"])
+@app.route("/status/task_id", methods=["GET"])
 @header_check
 def get_task_status():
     token = getattr(request, "token", None)

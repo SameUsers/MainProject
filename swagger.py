@@ -71,9 +71,95 @@ def register_swagger_path(swagger):
         }
     }
 )
+    swagger.add_path(
+    path="/status",
+    method="get",
+    summary="Получить список задач по статусу",
+    description="""
+    Возвращает список задач пользователя с заданным статусом.  
+    Поддерживается пагинация через параметры page и per_page.
+
+    Допустимые значения параметра status:  
+    - queue (ожидает)  
+    - process (в обработке)  
+    - done (готово)  
+    - error (ошибка)
+
+    ⚠️ Требуется авторизация через Bearer Token.
+    """,
+    parameters=[
+        {
+            "name": "status",
+            "in": "query",
+            "required": True,
+            "schema": {
+                "type": "string",
+                "enum": ["queue", "process", "done", "error"]
+            },
+            "description": "Фильтрация задач по статусу"
+        },
+        {
+            "name": "page",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "integer",
+                "default": 1
+            },
+            "description": "Номер страницы пагинации (по умолчанию 1)"
+        },
+        {
+            "name": "per_page",
+            "in": "query",
+            "required": False,
+            "schema": {
+                "type": "integer",
+                "default": 10
+            },
+            "description": "Количество задач на странице (по умолчанию 10)"
+        }
+    ],
+    responses={
+        "200": {
+            "description": "Успешный ответ. Возвращает задачи с указанным статусом.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "done",
+                        "page": 1,
+                        "per_page": 10,
+                        "total_tasks": 17,
+                        "total_pages": 2,
+                        "tasks": [
+                            {
+                                "task_id": "abc123",
+                                "status": "200"
+                            },
+                            {
+                                "task_id": "xyz789",
+                                "status": "200"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "400": {
+            "description": "Некорректный статус",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
+                    }
+                }
+            }
+        }
+    },
+    security=[{"ApiTokenAuth": []}]
+)
     
     swagger.add_path(
-    path="/status/recognitions",
+    path="/status/task_id",
     method="get",
     summary="Получение статуса задачи",
     description="""
