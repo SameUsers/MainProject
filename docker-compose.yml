@@ -6,11 +6,11 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpass
-      POSTGRES_DB: synpatic
+      POSTGRES_USER: ${postgress_user}
+      POSTGRES_PASSWORD: ${postgress_password}
+      POSTGRES_DB: ${postgres_db_name}
     ports:
-      - "5432:5432"
+      - "${postgress_exteral_port}:${postgres_interal_port}"
     volumes:
       - pg_data:/var/lib/postgresql/data
 
@@ -19,11 +19,11 @@ services:
     container_name: rabbitmq
     restart: always
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${redis_username}
+      RABBITMQ_DEFAULT_PASS: ${redis_password}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${redis_exteral_port}:${redis_interal_port}"
+      - "${redis_interface_exteral_port}:${redis_interface_interal_port}"
 
   app:
     build:

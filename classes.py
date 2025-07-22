@@ -96,11 +96,11 @@ class Transcribe(ModelX):
     
 class DataBase:
     def __init__(self, 
-                 POSTGRES_USER="admin", 
-                 POSTGRES_PASSWORD="adminpass", 
+                 POSTGRES_USER=os.getenv("postgress_user"), 
+                 POSTGRES_PASSWORD=os.getenv("postgress_password"), 
                  POSTGRES_HOST="postgres_db", 
-                 POSTGRES_PORT="5432", 
-                 POSTGRES_DB="synpatic"):
+                 POSTGRES_PORT=os.getenv("postgres_interal_port"), 
+                 POSTGRES_DB=os.getenv("postgres_db_name")):
         self.POSTGRES_USER = POSTGRES_USER
         self.POSTGRES_PASSWORD = POSTGRES_PASSWORD
         self.POSTGRES_HOST = POSTGRES_HOST
@@ -254,7 +254,7 @@ class FileManager:
         raise ValueError("Не удалось определить длительность аудио.")
 
 class RabbitMQ:
-    def __init__(self, queue_name='task', host='rabbitmq', port=5672, username='guest', password='guest'):
+    def __init__(self, queue_name='task', host='rabbitmq', port=os.getenv("redis_interal_port"), username=os.getenv("redis_username"), password=os.getenv("redis_password")):
         self.queue_name = queue_name
         self.host = host
         self.port = port

@@ -64,8 +64,14 @@ def authorization():
     if error:
         return error
     
-    hashed_token = generator.generate_token()
+    check_sql = "SELECT 1 FROM users WHERE username = %s LIMIT 1"
+    dublicate = db.execute(check_sql, params=[username], fetch=True)
 
+    error=check_util.check_value(dublicate, "Ошибка при добавлении пользователя в базу данных", 400)
+    if error:
+        return error
+    
+    hashed_token = generator.generate_token()
     time_limit = os.getenv("time_limit") 
 
     token_data = {
