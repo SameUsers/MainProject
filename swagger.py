@@ -125,21 +125,11 @@ def register_swagger_path(swagger):
     method="get",
     summary="Получение статуса задач",
     description="""
-    Возвращает статус задачи по task_id, либо список всех задач пользователя постранично.<br>
-    Требуется заголовок Authorization с токеном.<br>
-    Если передан task_id, вернёт одну задачу. Без task_id — список задач с пагинацией.
+    Возвращает статус задачи по task_id, либо список всех задач пользователя с пагинацией.<br>
+    Требуется заголовок Authorization: <token>.<br>
+    Если передан task_id, вернёт одну задачу. Без task_id — список задач с постраничным выводом.
     """,
     parameters=[
-        {
-            "name": "Authorization",
-            "in": "header",
-            "required": True,
-            "description": "Authorization <token>",
-            "schema": {
-                "type": "string",
-                "example": "Authorization: 123456abcdef..."
-            }
-        },
         {
             "name": "task_id",
             "in": "query",
@@ -212,32 +202,23 @@ def register_swagger_path(swagger):
             }
         }
     },
-    security=[{"ApiTokenAuth": []}])
+    security=[{"ApiTokenAuth": []}]
+)
     swagger.add_path(
     path="/download",
     method="get",
-    summary="Скачивание результата задачи",
+    summary="Скачать результат обработки",
     description="""
-    Позволяет скачать результат обработки задачи.<br>
-    Поддерживаются форматы: txt, json. <br>
-    Требуется заголовок Authorization, а также query-параметры task_id и type.
+    Позволяет скачать результат обработки задачи в формате txt или json.<br>
+    Требуется заголовок Authorization: <token>.<br>
+    Обязательные параметры: task_id и type (один из txt, `json`).
     """,
     parameters=[
-        {
-            "name": "Authorization",
-            "in": "header",
-            "required": True,
-            "description": "Authorization <token>",
-            "schema": {
-                "type": "string",
-                "example": "Authorization: 123456abcdef..."
-            }
-        },
         {
             "name": "task_id",
             "in": "query",
             "required": True,
-            "description": "ID задачи, для которой нужно скачать файл",
+            "description": "ID задачи, результат которой необходимо скачать",
             "schema": {
                 "type": "string",
                 "example": "abc123"
@@ -247,55 +228,47 @@ def register_swagger_path(swagger):
             "name": "type",
             "in": "query",
             "required": True,
-            "description": "Тип файла для скачивания (`txt` или `json`)",
+            "description": "Тип файла: txt или `json`",
             "schema": {
                 "type": "string",
                 "enum": ["txt", "json"],
-                "example": "txt"
+                "example": "json"
             }
         }
     ],
     responses={
         "200": {
-            "description": "Файл успешно скачан",
-            "content": {
-                "application/octet-stream": {
-                    "schema": {
-                        "type": "string",
-                        "format": "binary"
-                    }
-                }
-            }
+            "description": "Файл успешно найден и будет возвращён как attachment (скачивание)"
         },
         "400": {
-            "description": "Ошибка в запросе",
+            "description": "Неверные параметры запроса или тип файла",
             "content": {
                 "application/json": {
                     "examples": {
-                        "missing_params": {
-                            "summary": "Параметры не переданы",
+                        "missing_parameters": {
+                            "summary": "Не указан task_id или type",
                             "value": {"Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"}
                         },
                         "invalid_type": {
-                            "summary": "Недопустимый тип файла",
-                            "value": {"Ошибка": "Тип файла не поддерживается"}
+                            "summary": "Неверный тип файла",
+                            "value": {"Ошибка": "Недопустимый тип файла. Разрешены: txt, json"}
                         }
                     }
                 }
             }
         },
         "404": {
-            "description": "Задача или файл не найдены",
+            "description": "Задача не найдена или файл отсутствует",
             "content": {
                 "application/json": {
                     "examples": {
                         "not_found": {
-                            "summary": "Задача не найдена",
+                            "summary": "Файл или задача не найдены",
                             "value": {"Ошибка": "Задача не найдена или доступ запрещён"}
                         },
                         "file_missing": {
-                            "summary": "Файл не найден",
-                            "value": {"Ошибка": "Файл не найден по пути ..."}
+                            "summary": "Файл не найден на диске",
+                            "value": {"Ошибка": "Файл не найден"}
                         }
                     }
                 }
@@ -306,11 +279,10 @@ def register_swagger_path(swagger):
             "content": {
                 "application/json": {
                     "example": {
-                        "Ошибка": "Непредвиденная ошибка: <описание>"
+                        "Ошибка": "Непредвиденная ошибка: ..."
                     }
                 }
             }
         }
     },
-    security=[{"ApiTokenAuth": []}]
-)
+    security=[{"ApiTokenAuth": []}])
