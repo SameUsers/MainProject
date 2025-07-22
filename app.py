@@ -75,7 +75,7 @@ register_swagger_path(swagger)
 
 
 @app.route("/docs")
-def swagger_ui():
+def swagger_ui_view():
     return """
     <!DOCTYPE html>
     <html>
