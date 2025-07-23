@@ -151,7 +151,10 @@ class DataBase:
 
     def insert(self, table: str, data: dict):
         keys = data.keys()
-        values = tuple(data.values())
+        values = tuple(
+            json.dumps(v) if isinstance(v, (dict, list)) else v
+            for v in data.values()
+        )
         query = sql.SQL("INSERT INTO {table} ({fields}) VALUES ({placeholders})").format(
             table=sql.Identifier(table),
             fields=sql.SQL(', ').join(map(sql.Identifier, keys)),
