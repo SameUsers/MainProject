@@ -80,13 +80,19 @@ def authorization():
 
     token_data = {
         "username":username,
+        "token":f"Bearer {hashed_token}",
+        "time_limit": time_limit
+    }
+
+    message={
+        "username":username,
         "token":hashed_token,
         "time_limit": time_limit
     }
 
     db.insert("users", token_data)
 
-    return jsonify(token_data)
+    return jsonify(message)
 
 @app.route("/task", methods=["POST"])
 @header_check
