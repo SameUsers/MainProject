@@ -268,7 +268,7 @@ def get_task_status():
                     "task_id" : result[0]["task_id"]})
 
 
-def transcriptor(file_path, task_id, token):
+def transcriptor(file_path, task_id, token, file_duration):
     try:
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
         db.execute(sql_update, (json.dumps({"code": 100, "message": "Задача в процессе обработки"}), task_id))
