@@ -142,7 +142,7 @@ def push_task():
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
-            "file_duration": math.ceil(file_duration)
+            "file_duration": math.ceil(file_duration),
             "task_id" : task_id,
             "status": {"code": 80, "message": "Задача поставлена в очередь"}
         }
