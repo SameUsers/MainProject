@@ -466,7 +466,7 @@ class TokenGenerate:
         self.hashed_token = hashlib.sha256(self.raw_token.encode()).hexdigest()
 
     def generate_token(self):
-        return f"Bearer {self.hashed_token}"
+        return f"{self.hashed_token}"
     
     def generate_task_id(self):
         return str(uuid.uuid4())
