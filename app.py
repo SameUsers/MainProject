@@ -80,7 +80,7 @@ def authorization():
     token_data = {
         "username":username,
         "token":hashed_token,
-        "time_limit": f"{round(time_limit/60,2)} hours"
+        "time_limit": time_limit
     }
 
     db.insert("users", token_data)
@@ -148,7 +148,7 @@ def push_task():
         response_message={
             "task_id":task_id,
             "file_name":audio.filename,
-            "remaining_time" : f"{round(new_time/60,2)} hours"
+            "remaining_time" : new_time
         }
 
         task_list.append(response_message)
