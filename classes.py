@@ -81,7 +81,7 @@ class Transcribe(ModelX):
             use_auth_token=token_hfc,
             device=self.device
         )
-        diarize_segments = diarize_model(self.audio)
+        diarize_segments = diarize_model(self.audio,min_speakers=1, max_speakers=2)
         self.transcription = whisperx.assign_word_speakers(
             diarize_segments,
             self.transcription
