@@ -193,10 +193,11 @@ def get_tasks_by_status():
     username = getattr(request, "username", None)
 
     status_map = {
-    "queue": {"code": 80, "message": "Задача поставлена в очередь"},
-    "process": {"code": 100, "message": "Задача в процессе обработки"},
-    "done": {"code": 200, "message": "Задача успешно завершена и готова к загрузке"},
-    "error": {"code": 501, "message": "Транскрипция завершена с ошибкой"}}
+        "queue": {"code": 80, "message": "Задача поставлена в очередь"},
+        "process": {"code": 100, "message": "Задача в процессе обработки"},
+        "done": {"code": 200, "message": "Задача успешно завершена и готова к загрузке"},
+        "error": {"code": 501, "message": "Транскрипция завершена с ошибкой"}
+    }
 
     status_name = request.args.get("status", "").lower()
     if status_name not in status_map:
@@ -204,14 +205,17 @@ def get_tasks_by_status():
             "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
         }), 400
 
-    status_code = status_map[status_name]
+    status_code = str(status_map[status_name]["code"])
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 10))
     offset = (page - 1) * per_page
 
     sql = """
-        SELECT task_id,status FROM task
-        WHERE username = %s AND token = %s AND status = %s
+        SELECT task_id,
+               status->>'code' AS status_code,
+               status->>'message' AS status_message
+        FROM task
+        WHERE username = %s AND token = %s AND status->>'code' = %s
         ORDER BY id DESC
         LIMIT %s OFFSET %s
     """
@@ -219,20 +223,22 @@ def get_tasks_by_status():
 
     count_sql = """
         SELECT COUNT(*) FROM task
-        WHERE username = %s AND token = %s AND status = %s
+        WHERE username = %s AND token = %s AND status->>'code' = %s
     """
     count_result = db.execute(count_sql, params=[username, token, status_code], fetch=True)
     total_tasks = count_result[0]['count'] if count_result else 0
 
     return jsonify({
-        "status": status_name,
+        "status": {
+            "code": status_map[status_name]["code"],
+            "message": status_map[status_name]["message"]
+        },
         "page": page,
         "per_page": per_page,
         "total_tasks": total_tasks,
         "total_pages": (total_tasks + per_page - 1) // per_page,
         "tasks": result
     })
-
 
 @app.route("/status/task_id", methods=["GET"])
 @header_check
