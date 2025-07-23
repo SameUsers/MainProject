@@ -142,7 +142,7 @@ def push_task():
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
-            "file_duration": math.ceil(file_duration),
+            "audio_duration": math.ceil(file_duration),
             "task_id" : task_id,
             "status": {"code": 80, "message": "Задача поставлена в очередь"}
         }
@@ -268,7 +268,7 @@ def get_task_status():
                     "task_id" : result[0]["task_id"]})
 
 
-def transcriptor(file_path, task_id, token, file_duration):
+def transcriptor(file_path, task_id, token, duration):
     try:
         logger_app.info("Начало транскрипции")
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
@@ -297,7 +297,7 @@ def transcriptor(file_path, task_id, token, file_duration):
         remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
-            new_time = max(0, current_time - math.ceil(file_duration))
+            new_time = max(0, current_time - duration)
         sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
         db.execute(sql_duration, (new_time, token))
         
@@ -309,7 +309,7 @@ def transcriptor(file_path, task_id, token, file_duration):
 
 def task_process():
     def handle_task(message):
-        transcriptor(message["file_path"], message["task_id"], message["token"], message["file_duration"])
+        transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
 
     rabbit.consume_forever(handle_task)
 
