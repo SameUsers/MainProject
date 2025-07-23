@@ -248,13 +248,14 @@ class FileManager:
         path = Path(file_path)
         if not path.exists() or not path.is_file():
             raise FileNotFoundError(f"Файл не найден: {file_path}")
-
-        media_info = MediaInfo.parse(path)
-        for track in media_info.tracks:
-            if track.track_type == "Audio" and track.duration:
-                return round(float(track.duration) / 1000, 2)
-
-        raise ValueError("Не удалось определить длительность аудио.")
+        try:
+            media_info = MediaInfo.parse(path, encoding_errors="ignore")
+            for track in media_info.tracks:
+                if track.track_type == "Audio" and track.duration:
+                    return round(float(track.duration) / 1000, 2)
+        except Exception as e:
+            print(f"Ошибка при чтении медиаданных из файла '{file_path}': {e}")
+        return 0.0
 
 class RabbitMQ:
     def __init__(self, queue_name='task', host='rabbitmq', port=os.getenv("redis_interal_port"), username=os.getenv("redis_username"), password=os.getenv("redis_password")):

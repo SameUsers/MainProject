@@ -36,14 +36,14 @@ def header_check(f):
         header = request.headers.get("Authorization")
 
         if not header:
-            return jsonify({"error":"Отсутствует токен для авторизации в запросе"}), 403
+            return jsonify({"error":"Отсутствует токен для авторизации в запросе"}), 401
         
         sql_check="""SELECT * FROM users WHERE token = %s;"""
 
         check=db.execute(sql_check,(header,),fetch=True)
 
         if not check:
-            return jsonify({"error":"Недействительный токен"}), 403
+            return jsonify({"error":"Недействительный токен"}), 401
                 
         data=check[0]
 
@@ -174,7 +174,7 @@ def download_task():
     """
     task = db.execute(sql, params=[task_id, username, token], fetch=True)
     if not task:
-        return jsonify({"error": "Задача не найдена или доступ запрещён"}), 404
+        return jsonify({"error": "Задача не найдена"}), 404
 
     try:
         downloader = TaskDownloader()
@@ -229,10 +229,6 @@ def get_tasks_by_status():
     total_tasks = count_result[0]['count'] if count_result else 0
 
     return jsonify({
-        "status": {
-            "code": status_map[status_name]["code"],
-            "message": status_map[status_name]["message"]
-        },
         "page": page,
         "per_page": per_page,
         "total_tasks": total_tasks,
