@@ -303,11 +303,12 @@ def transcriptor(file_path, task_id, token, file_duration):
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
     except Exception as e:
+        print(e)
         db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
 
 def task_process():
     def handle_task(message):
-        transcriptor(message["file_path"],message["task_id"],message["token"],message["file_duration"])
+        transcriptor(message["file_path"], message["task_id"], message["token"], message["file_duration"])
 
     rabbit.consume_forever(handle_task)
 
