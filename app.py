@@ -148,7 +148,7 @@ def push_task():
             "task_id":task_id,
             "file_name":audio.filename,
             "use_time" : math.ceil(file_duration),
-            "remaining_time" : current_time
+            "remaining_time" : remaining_time
         }
 
         task_list.append(response_message)
@@ -261,7 +261,7 @@ def get_task_status():
                     "task_id" : result[0]["task_id"]})
 
 
-def transcriptor(file_path, task_id):
+def transcriptor(file_path, task_id, token):
     try:
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
         db.execute(sql_update, (json.dumps({"code": 100, "message": "Задача в процессе обработки"}), task_id))
@@ -299,7 +299,7 @@ def transcriptor(file_path, task_id):
 
 def task_process():
     def handle_task(message):
-        transcriptor(message["file_path"],message["task_id"])
+        transcriptor(message["file_path"],message["task_id"],message["token"])
 
     rabbit.consume_forever(handle_task)
 
