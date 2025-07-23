@@ -4,6 +4,7 @@ from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExi
 from swagger import register_swagger_path
 from functools import wraps
 import time
+import math
 import json
 from pathlib import Path
 from dotenv import load_dotenv
@@ -123,14 +124,12 @@ def push_task():
 
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
-            new_time = max(0, current_time - int(file_duration))
+            new_time = max(0, current_time - math.ceil(file_duration))
         
-        if int(file_duration) > current_time:
-            return jsonify({"error": "Недостаточно времени. Осталось: {} сек, требуется: {} сек.".format(current_time, int(file_duration))}), 400
+        if math.ceil(file_duration) > current_time:
+            return jsonify({"error": "Недостаточно времени. Осталось: {} сек, требуется: {} сек.".format(current_time, math.ceil(file_duration))}), 400
 
-        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
-        db.execute(sql_duration, (new_time, token))
-        
+
         task_data = {
             "username":username,
             "token":token,
@@ -148,7 +147,8 @@ def push_task():
         response_message={
             "task_id":task_id,
             "file_name":audio.filename,
-            "remaining_time" : new_time
+            "use_time" : math.ceil(file_duration),
+            "remaining_time" : remaining_time
         }
 
         task_list.append(response_message)
@@ -282,6 +282,15 @@ def transcriptor(file_path, task_id):
         )
         formatter.format_segments()
         formatter.save()
+
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
+        if remaining_time:
+            current_time = remaining_time[0]["time_limit"]
+            new_time = max(0, current_time - math.ceil(file_duration))
+        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
+        db.execute(sql_duration, (new_time, token))
+        
 
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
