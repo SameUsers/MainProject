@@ -148,7 +148,7 @@ def push_task():
             "task_id":task_id,
             "file_name":audio.filename,
             "use_time" : math.ceil(file_duration),
-            "remaining_time" : remaining_time
+            "remaining_time" : current_time
         }
 
         task_list.append(response_message)
