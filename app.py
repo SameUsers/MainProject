@@ -270,12 +270,13 @@ def get_task_status():
 
 def transcriptor(file_path, task_id, token, file_duration):
     try:
+        logger_app.info("Начало транскрипции")
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
         db.execute(sql_update, (json.dumps({"code": 100, "message": "Задача в процессе обработки"}), task_id))
 
         to_transcription = Transcribe(model, audio_path=file_path)
         result = to_transcription.transcribe()
-
+        logger_app.info("Получен результат транскрипции")
         file_path = Path(file_path)
         task_folder = file_path.parent
         json_path = task_folder / f"{task_id}.json"
@@ -289,8 +290,8 @@ def transcriptor(file_path, task_id, token, file_duration):
         )
         formatter.format_segments()
         formatter.save()
-        logger_transcription.info("Транскрипция полностью завершена и сохранена")
-        logger_transcription.info(token)
+        logger_app.info("Транскрипция полностью завершена и сохранена")
+        logger_app.info(token)
 
         sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
         remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
@@ -303,7 +304,7 @@ def transcriptor(file_path, task_id, token, file_duration):
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
     except Exception as e:
-        print(e)
+        print(Exception)
         db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
 
 def task_process():
