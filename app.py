@@ -289,6 +289,8 @@ def transcriptor(file_path, task_id, token, file_duration):
         )
         formatter.format_segments()
         formatter.save()
+        logger_transcription.info("Транскрипция полностью завершена и сохранена")
+        logger_transcription.info(token)
 
         sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
         remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
