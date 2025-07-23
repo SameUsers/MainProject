@@ -178,6 +178,7 @@ class DataBase:
                     token TEXT,
                     file_path TEXT,
                     file_name TEXT,
+                    file_duration REAL,
                     content_type TEXT,
                     task_id TEXT,
                     status JSONB)"""

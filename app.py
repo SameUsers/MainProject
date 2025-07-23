@@ -298,7 +298,6 @@ def transcriptor(file_path, task_id, token, file_duration):
         sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
         db.execute(sql_duration, (new_time, token))
         
-
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
     except Exception as e:
