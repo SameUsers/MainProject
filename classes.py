@@ -177,7 +177,7 @@ class DataBase:
                     file_name TEXT,
                     content_type TEXT,
                     task_id TEXT,
-                    status TEXT)"""
+                    status JSONB)"""
         
         self.execute(sql_data, fetch=False)
 
@@ -399,7 +399,7 @@ class TranscriptFormatter:
             self.final_lines.append((seg["start"], seg["speaker"], start_str, seg["text"]))
 
     def save(self):
-        # Сохраняем JSON
+        
         processing_time = round(time.time() - self.start_time, 2)
         response = {
             "status": "success",
@@ -411,7 +411,7 @@ class TranscriptFormatter:
         with open(self.json_path, "w", encoding="utf-8") as f:
             json.dump(response, f, ensure_ascii=False, indent=2)
 
-        # Сохраняем TXT
+        
         with open(self.txt_path, "w", encoding="utf-8") as f:
             last_speaker = None
             for _, speaker, time_str, text in sorted(self.final_lines, key=lambda x: x[0]):

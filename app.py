@@ -4,6 +4,7 @@ from classes import TokenGenerate, TranscriptFormatter, TaskDownloader, ValueExi
 from swagger import register_swagger_path
 from functools import wraps
 import time
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -35,14 +36,14 @@ def header_check(f):
         header = request.headers.get("Authorization")
 
         if not header:
-            return jsonify({"Ошибка":"Отсутствует токен для авторизации в запросе"}), 403
+            return jsonify({"error":"Отсутствует токен для авторизации в запросе"}), 403
         
         sql_check="""SELECT * FROM users WHERE token = %s;"""
 
         check=db.execute(sql_check,(header,),fetch=True)
 
         if not check:
-            return jsonify({"Ошибка":"Недействительный токен"}), 403
+            return jsonify({"error":"Недействительный токен"}), 403
                 
         data=check[0]
 
@@ -71,7 +72,7 @@ def authorization():
     dublicate = db.execute(check_sql, params=[username], fetch=True)
 
     if dublicate:
-        return jsonify({"Ошибка": "Пользователь с таким именем уже существует"}), 400
+        return jsonify({"error": "Пользователь с таким именем уже существует"}), 400
     
     hashed_token = generator.generate_token()
     time_limit = os.getenv("time_limit") 
@@ -108,7 +109,7 @@ def push_task():
         audio_type=audio.content_type
 
         if audio_type not in allowed_types:
-            return jsonify({"Ошибка":"Неподдерживаемый формат аудио"}) , 400
+            return jsonify({"error":"Неподдерживаемый формат аудио"}) , 400
         
         file_manager.makedir("audio_data")
         task_id = generator.generate_task_id()
@@ -125,7 +126,7 @@ def push_task():
             new_time = max(0, current_time - int(file_duration))
         
         if int(file_duration) > current_time:
-            return jsonify({"Ошибка": "Недостаточно времени. Осталось: {} сек, требуется: {} сек.".format(current_time, int(file_duration))}), 400
+            return jsonify({"error": "Недостаточно времени. Осталось: {} сек, требуется: {} сек.".format(current_time, int(file_duration))}), 400
 
         sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
         db.execute(sql_duration, (new_time, token))
@@ -137,7 +138,7 @@ def push_task():
             "content_type":audio_type,
             "file_name":audio.filename,
             "task_id" : task_id,
-            "status":"80"
+            "status": {"code": 80, "message": "Задача поставлена в очередь"}
         }
 
         rabbitmq.publish(task_data)
@@ -164,7 +165,7 @@ def download_task():
     file_type = request.args.get("type")
 
     if not task_id or not file_type:
-        return jsonify({"Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"}), 400
+        return jsonify({"error": "Необходимо указать task_id и тип файла (type=txt|json)"}), 400
 
     sql = """
         SELECT * FROM task
@@ -173,17 +174,17 @@ def download_task():
     """
     task = db.execute(sql, params=[task_id, username, token], fetch=True)
     if not task:
-        return jsonify({"Ошибка": "Задача не найдена или доступ запрещён"}), 404
+        return jsonify({"error": "Задача не найдена или доступ запрещён"}), 404
 
     try:
         downloader = TaskDownloader()
         return downloader.download(username, task_id, file_type.lower())
     except FileNotFoundError as e:
-        return jsonify({"Ошибка": str(e)}), 404
+        return jsonify({"error": str(e)}), 404
     except ValueError as e:
-        return jsonify({"Ошибка": str(e)}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"Ошибка": f"Непредвиденная ошибка: {e}"}), 500
+        return jsonify({"error": f"Непредвиденная error: {e}"}), 500
     
 @app.route("/status", methods=["GET"])
 @header_check
@@ -192,11 +193,10 @@ def get_tasks_by_status():
     username = getattr(request, "username", None)
 
     status_map = {
-        "queue": "80",
-        "process": "100",
-        "done": "200",
-        "error": "501"
-    }
+    "queue": {"code": 80, "message": "Задача поставлена в очередь"},
+    "process": {"code": 100, "message": "Задача в процессе обработки"},
+    "done": {"code": 200, "message": "Задача успешно завершена и готова к загрузке"},
+    "error": {"code": 501, "message": "Транскрипция завершена с ошибкой"}}
 
     status_name = request.args.get("status", "").lower()
     if status_name not in status_map:
@@ -243,7 +243,7 @@ def get_task_status():
     task_id = request.args.get("task_id")
 
     if not task_id:
-        return jsonify({"Ошибка": "Параметр 'task_id' обязателен"}), 400
+        return jsonify({"error": "Параметр 'task_id' обязателен"}), 400
 
     sql = """
         SELECT * FROM task
@@ -253,16 +253,16 @@ def get_task_status():
     result = db.execute(sql, params=[task_id, username, token], fetch=True)
 
     if not result:
-        return jsonify({"Ошибка": "Задача не найдена"}), 404
+        return jsonify({"error": "Задача не найдена"}), 404
 
-    return jsonify({"Статус" : result[0]["status"],
-                    "ID-задачи" : result[0]["task_id"]})
+    return jsonify({"status" : result[0]["status"],
+                    "task_id" : result[0]["task_id"]})
 
 
 def transcriptor(file_path, task_id):
     try:
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
-        db.execute(sql_update, ("100", task_id))
+        db.execute(sql_update, (json.dumps({"code": 100, "message": "Задача в процессе обработки"}), task_id))
 
         to_transcription = Transcribe(model, audio_path=file_path)
         result = to_transcription.transcribe()
@@ -281,10 +281,10 @@ def transcriptor(file_path, task_id):
         formatter.format_segments()
         formatter.save()
 
-        db.execute(sql_update, ("200", task_id))
+        db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
     except Exception as e:
-        db.execute("UPDATE task SET status = %s WHERE task_id = %s", ("501", task_id))
+        db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
 
 def task_process():
     def handle_task(message):
