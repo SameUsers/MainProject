@@ -355,9 +355,10 @@ class TranscriptFormatter:
 
     @staticmethod
     def _format_timestamp(seconds: float) -> str:
-        minutes = int(seconds // 60)
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
         sec = int(seconds % 60)
-        return f"{minutes:02}:{sec:02}"
+        return f"{hours:02}:{minutes:02}:{sec:02}"
 
     def format_segments(self):
         merged_segments = []
