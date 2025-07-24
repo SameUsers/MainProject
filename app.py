@@ -102,6 +102,7 @@ def push_task():
     generator=TokenGenerate()
     allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac", "audio/ogg", "audio/mp4", "audio/aac", "audio/wma"]
     audio_files = request.files.getlist("audio")
+    diarization_flag = request.form.get("diarization", "false").lower() == "true"
 
     error=check_util.check_value(audio_files,"Ауидо не найдены", 400)
     if error:
@@ -145,6 +146,7 @@ def push_task():
             "content_type":audio_type,
             "file_name":audio.filename,
             "audio_duration" : math.ceil(file_duration),
+            "with_diarization" : diarization_flag,
             "task_id" : task_id,
             "status": {"code": 80, "message": "Задача поставлена в очередь"}
         }
@@ -203,26 +205,56 @@ def get_tasks_by_status():
     username = getattr(request, "username", None)
 
     status_map = {
-        "queue": {"code": 80, "message": "Задача поставлена в очередь"},
+        "queue":   {"code": 80,  "message": "Задача поставлена в очередь"},
         "process": {"code": 100, "message": "Задача в процессе обработки"},
-        "done": {"code": 200, "message": "Задача успешно завершена и готова к загрузке"},
-        "error": {"code": 501, "message": "Транскрипция завершена с ошибкой"}
+        "done":    {"code": 200, "message": "Задача успешно завершена и готова к загрузке"},
+        "error":   {"code": 501, "message": "Транскрипция завершена с ошибкой"},
     }
 
-    status_name = request.args.get("status", "").lower()
+    status_name = (request.args.get("status") or "").lower()
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 10))
+    offset = (page - 1) * per_page
+
+    # Без статуса — отдать все задачи пользователя
+    if not status_name:
+        sql = """
+            SELECT task_id,
+                   status->>'code'    AS status_code,
+                   status->>'message' AS status_message
+            FROM task
+            WHERE username = %s AND token = %s
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """
+        result = db.execute(sql, params=[username, token, per_page, offset], fetch=True)
+
+        count_sql = """
+            SELECT COUNT(*) FROM task
+            WHERE username = %s AND token = %s
+        """
+        count_result = db.execute(count_sql, params=[username, token], fetch=True)
+        total_tasks = count_result[0]['count'] if count_result else 0
+
+        return jsonify({
+            "page": page,
+            "per_page": per_page,
+            "total_tasks": total_tasks,
+            "total_pages": (total_tasks + per_page - 1) // per_page,
+            "tasks": result or []
+        })
+
+    # Если статус передан — проверяем и фильтруем
     if status_name not in status_map:
         return jsonify({
             "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
         }), 400
 
     status_code = str(status_map[status_name]["code"])
-    page = int(request.args.get("page", 1))
-    per_page = int(request.args.get("per_page", 10))
-    offset = (page - 1) * per_page
 
     sql = """
         SELECT task_id,
-               status->>'code' AS status_code,
+               status->>'code'    AS status_code,
                status->>'message' AS status_message
         FROM task
         WHERE username = %s AND token = %s AND status->>'code' = %s
@@ -243,7 +275,7 @@ def get_tasks_by_status():
         "per_page": per_page,
         "total_tasks": total_tasks,
         "total_pages": (total_tasks + per_page - 1) // per_page,
-        "tasks": result
+        "tasks": result or []
     })
 
 @app.route("/status/task_id", methods=["GET"])
@@ -292,7 +324,8 @@ def transcriptor(file_path, task_id, token, duration):
             start_time=time.time()
         )
         formatter.format_segments()
-        formatter.save()
+        formatter.save(no_diarization=False)
+
         logger_transcription.info("Результат транскрипции успешно получен, форматирован и сохранен")
         logger_app.info("Транскрипция полностью завершена и сохранена")
         logger_app.info(token)
@@ -311,9 +344,61 @@ def transcriptor(file_path, task_id, token, duration):
         print(Exception)
         db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
 
+def transcriptor_without_diarization(file_path, task_id, token, duration):
+    try:
+        logger_transcription.info("Начало транскрипции (без диаризации) | task_id=%s", task_id)
+
+        sql_update_status = "UPDATE task SET status = %s WHERE task_id = %s"
+        db.execute(sql_update_status, (
+            json.dumps({"code": 100, "message": "Задача в процессе обработки"}),
+            task_id
+        ))
+
+        to_transcription = Transcribe(model, audio_path=file_path)
+        result = to_transcription.transcribe_no_diarization()
+
+        file_path_p = Path(file_path)
+        task_folder = file_path_p.parent
+        json_path = task_folder / f"{task_id}.json"
+        txt_path  = task_folder / f"{task_id}.txt"
+
+        formatter = TranscriptFormatter(
+            segments=result["segments"],
+            json_path=json_path,
+            txt_path=txt_path,
+            start_time=time.time()
+        )
+        formatter.format_no_diarization()
+        formatter.save(no_diarization=True)
+
+        logger_transcription.info("Результат транскрипции успешно получен, форматирован и сохранен")
+        logger_app.info("Транскрипция полностью завершена и сохранена")
+        logger_app.info(token)
+
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
+        if remaining_time:
+            current_time = remaining_time[0]["time_limit"]
+            new_time = max(0, current_time - duration)
+        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
+        db.execute(sql_duration, (new_time, token))
+        
+        db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
+
+    except Exception as e:
+        print(Exception)
+        db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
+
+
+
+
 def task_process():
     def handle_task(message):
-        transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
+        if message.get("with_diarization"):
+            transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
+        else:
+            transcriptor_without_diarization(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
+
 
     rabbit.consume_forever(handle_task)
 

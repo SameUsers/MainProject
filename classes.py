@@ -93,6 +93,12 @@ class Transcribe(ModelX):
         self.align_words()
         self.diarize()
         return self.transcription
+
+    def transcribe_no_diarization(self):
+        self.load_audio()
+        self.transcribe_audio()
+        self.align_words()
+        return self.transcription
     
 class DataBase:
     def __init__(self, 
@@ -180,6 +186,7 @@ class DataBase:
                     file_name TEXT,
                     audio_duration INTEGER,
                     content_type TEXT,
+                    with_diarization TEXT,
                     task_id TEXT,
                     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                     status JSONB)"""
@@ -405,8 +412,29 @@ class TranscriptFormatter:
             start_str = self._format_timestamp(seg["start"])
             self.final_lines.append((seg["start"], seg["speaker"], start_str, seg["text"]))
 
-    def save(self):
-        
+    def format_no_diarization(self):
+        self.transcript_parts = []
+        self.timestamps = []
+        self.final_lines = []
+
+        for seg in self.segments:
+            try:
+                start = float(seg["start"])
+                end = float(seg["end"])
+            except Exception as err:
+                raise ValueError(f"Ошибка преобразования start/end в сегменте: {seg}") from err
+
+            text = seg["text"].strip()
+            self.transcript_parts.append(text)
+            self.timestamps.append({
+                "start": start,
+                "end": end,
+                "text": text
+            })
+            start_str = self._format_timestamp(start)
+            self.final_lines.append((start, start_str, text))
+
+    def save(self, no_diarization=False):
         processing_time = round(time.time() - self.start_time, 2)
         response = {
             "status": "success",
@@ -418,16 +446,21 @@ class TranscriptFormatter:
         with open(self.json_path, "w", encoding="utf-8") as f:
             json.dump(response, f, ensure_ascii=False, indent=2)
 
-        
         with open(self.txt_path, "w", encoding="utf-8") as f:
-            last_speaker = None
-            for _, speaker, time_str, text in sorted(self.final_lines, key=lambda x: x[0]):
-                if speaker != last_speaker:
-                    if last_speaker is not None:
-                        f.write("\n")
-                    f.write(f"{speaker}:\n")
-                    last_speaker = speaker
-                f.write(f"{time_str} - {text}\n")
+            if no_diarization:
+                # Без спикеров
+                for _, time_str, text in sorted(self.final_lines, key=lambda x: x[0]):
+                    f.write(f"{time_str} - {text}\n")
+            else:
+                # С диаризацией
+                last_speaker = None
+                for _, speaker, time_str, text in sorted(self.final_lines, key=lambda x: x[0]):
+                    if speaker != last_speaker:
+                        if last_speaker is not None:
+                            f.write("\n")
+                        f.write(f"{speaker}:\n")
+                        last_speaker = speaker
+                    f.write(f"{time_str} - {text}\n")
 
 class TaskDownloader:
     def __init__(self, base_dir: str = "audio_data"):
