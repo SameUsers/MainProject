@@ -181,6 +181,7 @@ class DataBase:
                     audio_duration INTEGER,
                     content_type TEXT,
                     task_id TEXT,
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                     status JSONB)"""
         
         self.execute(sql_data, fetch=False)
