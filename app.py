@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+
 model=ModelX()
 model.load()
 db=DataBase()
@@ -50,6 +51,7 @@ def header_check(f):
 
         request.token = header
         request.username = data["username"]
+        logger_app.info("Декоратор успешно проверил токен")
 
         return f(*args, **kwargs)
     return decorator
@@ -142,7 +144,7 @@ def push_task():
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
-            "audio_duration": math.ceil(file_duration),
+            "audio_duration" : math.ceil(file_duration),
             "task_id" : task_id,
             "status": {"code": 80, "message": "Задача поставлена в очередь"}
         }
@@ -185,6 +187,7 @@ def download_task():
 
     try:
         downloader = TaskDownloader()
+        logger_app.info(f"Запрос на загрузку файла от {username}")
         return downloader.download(username, task_id, file_type.lower())
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
@@ -270,13 +273,13 @@ def get_task_status():
 
 def transcriptor(file_path, task_id, token, duration):
     try:
-        logger_app.info("Начало транскрипции")
+        logger_transcription.info("Начало транскрипции")
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
         db.execute(sql_update, (json.dumps({"code": 100, "message": "Задача в процессе обработки"}), task_id))
 
         to_transcription = Transcribe(model, audio_path=file_path)
         result = to_transcription.transcribe()
-        logger_app.info("Получен результат транскрипции")
+        logger_transcription.info("Получен результат транскрипции")
         file_path = Path(file_path)
         task_folder = file_path.parent
         json_path = task_folder / f"{task_id}.json"
@@ -290,6 +293,7 @@ def transcriptor(file_path, task_id, token, duration):
         )
         formatter.format_segments()
         formatter.save()
+        logger_transcription.info("Результат транскрипции успешно получен, форматирован и сохранен")
         logger_app.info("Транскрипция полностью завершена и сохранена")
         logger_app.info(token)
 
