@@ -102,7 +102,7 @@ def push_task():
     generator=TokenGenerate()
     allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac", "audio/ogg", "audio/mp4", "audio/aac", "audio/wma"]
     audio_files = request.files.getlist("audio")
-    diarization_flag = request.form.get("with_diarization", "true").lower() == "false"
+    diarization_flag = request.form.get("with_diarization", "false").lower() == "true"
 
     error=check_util.check_value(audio_files,"Ауидо не найдены", 400)
     if error:
@@ -349,7 +349,7 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
         logger_transcription.info("Начало транскрипции (без диаризации) | task_id=%s", task_id)
 
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
-        db.execute(sql_update_status, (
+        db.execute(sql_update, (
             json.dumps({"code": 100, "message": "Задача в процессе обработки"}),
             task_id
         ))
