@@ -36,6 +36,22 @@ logger_app.info("Таблицы успешно инициализированы"
 logger_app.info("Таблицы успешно инициализированы")
 register_swagger_path(swagger)
 
+
+def admin_check(f):
+    @wraps(f)
+    def decorator_admin (*args,**kwargs):
+        header = request.headers.get("Authorization")
+
+        if not header:
+            return jsonify({"error":"Отсутствует токен для авторизации в запросе"}), 401
+        
+        if header!="Bearer jdhnbghryeujgnbf":
+            return jsonify({"error":"Доступ запрещен"}), 401
+
+        return f(*args, **kwargs)
+    return decorator_admin
+
+
 def header_check(f):
     @wraps(f)
     def decorator(*args,**kwargs):
@@ -61,6 +77,7 @@ def header_check(f):
     return decorator
 
 @app.route("/authorization", methods=["POST"])
+@admin_check
 def authorization():
     generator=TokenGenerate()
     user=request.get_json()
