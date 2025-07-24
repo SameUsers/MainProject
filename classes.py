@@ -274,7 +274,7 @@ class RabbitMQ:
                 params = pika.ConnectionParameters(host=self.host, port=self.port, credentials=credentials, heartbeat=1800,blocked_connection_timeout=300)
                 self.connection = pika.BlockingConnection(params)
                 self.channel = self.connection.channel()
-                self.channel.queue_declare(queue=self.queue_name, durable=True)
+                self.channel.queue_declare(queue=self.queue_name, durable=True, auto_delete=False)
                 logging.info("[RabbitMQ] Подключение установлено.")
                 break
             except Exception as e:
