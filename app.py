@@ -100,7 +100,7 @@ def authorization():
 @header_check
 def push_task():
     generator=TokenGenerate()
-    allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac"]
+    allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac", "audio/ogg", "audio/mp4", "audio/aac", "audio/wma"]
     audio_files = request.files.getlist("audio")
 
     error=check_util.check_value(audio_files,"Ауидо не найдены", 400)
