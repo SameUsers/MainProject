@@ -228,10 +228,14 @@ def register_swagger_path(swagger):
     Требуется передать JWT-токен в заголовке:
     Authorization: Bearer <token>
 
+    Флаг диаризации:
+    - with_diarization (опционально) — булево значение (true/false).
+      Если указать true, транскрипция будет включать диаризацию спикеров.
+
     Тело запроса должно быть типа multipart/form-data, 
     где параметр audio — массив аудиофайлов.
 
-    Поддерживаемые форматы: wav, mp3, flac
+    Поддерживаемые форматы: wav, mp3, flac, ogg, mp4, aac, wma
     """,
     request_body={
         "required": True,
@@ -247,6 +251,10 @@ def register_swagger_path(swagger):
                                 "format": "binary"
                             },
                             "description": "Один или несколько аудиофайлов"
+                        },
+                        "with_diarization": {
+                            "type": "boolean",
+                            "description": "Флаг включения диаризации (по умолчанию false)"
                         }
                     },
                     "required": ["audio"]
@@ -263,12 +271,16 @@ def register_swagger_path(swagger):
                         {
                             "task_id": "abc123",
                             "file_name": "audio1.wav",
-                            "remaining_time": 120
+                            "audio_duration": 120,
+                            "remaining_time": 300,
+                            "with_diarization": False
                         },
                         {
                             "task_id": "def456",
                             "file_name": "audio2.mp3",
-                            "remaining_time": 60
+                            "audio_duration": 60,
+                            "remaining_time": 240,
+                            "with_diarization": True
                         }
                     ]
                 }
@@ -279,7 +291,7 @@ def register_swagger_path(swagger):
             "content": {
                 "application/json": {
                     "example": {
-                        "Ошибка": "Недостаточно времени. Осталось: 10 сек, требуется: 30 сек."
+                        "error": "Недостаточно времени. Осталось: 10 сек, требуется: 30 сек."
                     }
                 }
             }
