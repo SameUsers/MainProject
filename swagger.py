@@ -181,6 +181,7 @@ def register_swagger_path(swagger):
     path="/status/{task_id}",
     method="get",
     summary="Получить статус задачи по task_id",
+    tags=["Статусы"],
     description="""
     Возвращает статус конкретной задачи по её идентификатору.
     Требуется авторизация через Bearer Token.
