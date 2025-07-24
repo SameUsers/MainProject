@@ -25,6 +25,10 @@ logger_transcription=Logger("transcription").get_logger()
 app = Flask(__name__)
 
 swagger=SwaggerDocs(app)
+swagger.add_tag("Авторизация", "Метод для входа и получения токенов")
+swagger.add_tag("Задачи", "Создание или загрузка задачи")
+swagger.add_tag("Статусы", "Просмотр статусов задач")
+
 
 logger_app.info("Инициализация таблиц в Postgres")
 db.start_initial()

@@ -516,6 +516,7 @@ class SwaggerDocs:
                 "description": description
             },
             "paths": {},
+            "tags": [],
             "components": {
                 "securitySchemes": {
                     "ApiTokenAuth": {
@@ -563,7 +564,11 @@ class SwaggerDocs:
             </html>
             """
 
-    def add_path(self, path, method="get", summary="", description="", parameters=None, request_body=None, responses=None, security=None):
+    def add_tag(self, name, description=""):
+        if not any(tag['name'] == name for tag in self.openapi["tags"]):
+            self.openapi["tags"].append({"name": name, "description": description})
+
+    def add_path(self, path, method="get", summary="", description="", parameters=None, request_body=None, responses=None, security=None, tags=None):
         method = method.lower()
         if path not in self.openapi["paths"]:
             self.openapi["paths"][path] = {}
@@ -572,7 +577,8 @@ class SwaggerDocs:
             "summary": summary,
             "description": description,
             "parameters": parameters or [],
-            "responses": responses or {}
+            "responses": responses or {},
+            "tags": tags or [] 
         }
 
         if request_body:
@@ -582,5 +588,6 @@ class SwaggerDocs:
             path_item["security"] = security
 
         self.openapi["paths"][path][method] = path_item
+
     def to_dict(self):
         return self.openapi
