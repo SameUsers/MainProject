@@ -3,7 +3,7 @@ def register_swagger_path(swagger):
     path="/authorization",
     method="post",
     summary="Регистрация пользователя и получение токена",
-    tags=["Авторизация"]
+    tags=["Авторизация"],
     description="""
     Регистрирует нового пользователя и выдает ему токен.
 
@@ -76,7 +76,7 @@ def register_swagger_path(swagger):
     path="/status",
     method="get",
     summary="Получить список задач по статусу",
-    tags=["Статусы"]
+    tags=["Статусы"],
     description="""
     Возвращает список задач пользователя.  
     Если параметр status не передан, возвращаются все задачи.
@@ -167,7 +167,7 @@ def register_swagger_path(swagger):
     path="/status/task_id",
     method="get",
     summary="Получение статуса задачи",
-    tags=["Статусы"]
+    tags=["Статусы"],
     description="""
     Получить статус задачи по task_id.
 
@@ -228,7 +228,7 @@ def register_swagger_path(swagger):
     path="/task",
     method="post",
     summary="Отправка аудиофайлов в очередь обработки",
-    tags=["Задачи"]
+    tags=["Задачи"],
     description="""
     Принимает один или несколько аудиофайлов и ставит задачи в очередь на обработку.
 
@@ -309,7 +309,7 @@ def register_swagger_path(swagger):
     path="/download",
     method="get",
     summary="Скачивание результата распознавания",
-    tags=["Задачи"]
+    tags=["Задачи"],
     description="""
     Позволяет скачать результат задачи по task_id.
 
