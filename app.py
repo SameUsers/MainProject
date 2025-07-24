@@ -299,13 +299,11 @@ def get_tasks_by_status():
         "tasks": result or []
     })
 
-@app.route("/status/task_id", methods=["GET"])
+@app.route("/status/<task_id>", methods=["GET"])
 @header_check
-def get_task_status():
+def get_task_status(task_id):
     token = getattr(request, "token", None)
     username = getattr(request, "username", None)
-
-    task_id = request.args.get("task_id")
 
     if not task_id:
         return jsonify({"error": "Параметр 'task_id' обязателен"}), 400
@@ -320,9 +318,10 @@ def get_task_status():
     if not result:
         return jsonify({"error": "Задача не найдена"}), 404
 
-    return jsonify({"status" : result[0]["status"],
-                    "task_id" : result[0]["task_id"]})
-
+    return jsonify({
+        "status": result[0]["status"],
+        "task_id": result[0]["task_id"]
+    })
 
 def transcriptor(file_path, task_id, token, duration):
     try:

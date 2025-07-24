@@ -31,47 +31,40 @@ def register_swagger_path(swagger):
         }
     },
     responses={
-        "200": {
-            "description": "Пользователь успешно зарегистрирован",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "username": "myusername",
-                        "token": "generated_token_123",
-                        "time_limit": 600
-                    }
+    "200": {
+        "description": "Пользователь успешно авторизован. Возвращает сгенерированный токен и лимит времени.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "username": "example_user",
+                    "token": "fed4be589d563617ac803a5e5259977a5d078e794e648dae5d0f2bd17fade085",
+                    "time_limit": 3600
                 }
             }
-        },
-        "400": {
-            "description": "Ошибка запроса или пользователь уже существует",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_body": {
-                            "summary": "Отсутствует тело запроса",
-                            "value": {
-                                "Ошибка": "В теле запроса отсутствует JSON-Body"
-                            }
-                        },
-                        "missing_username": {
-                            "summary": "Не указано имя пользователя",
-                            "value": {
-                                "Ошибка": "Имя для пользователя не указано"
-                            }
-                        },
-                        "duplicate_user": {
-                            "summary": "Пользователь уже существует",
-                            "value": {
-                                "Ошибка": "Пользователь с таким именем уже существует"
-                            }
-                        }
+        }
+    },
+    "400": {
+        "description": "Ошибка валидации или пользователь уже существует.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "missing_body": {
+                        "summary": "Отсутствует JSON-Body",
+                        "value": {"error": "В теле запроса отсутствует JSON-Body"}
+                    },
+                    "missing_username": {
+                        "summary": "Не указано имя пользователя",
+                        "value": {"error": "Имя для пользователя не указано"}
+                    },
+                    "duplicate_user": {
+                        "summary": "Пользователь уже существует",
+                        "value": {"error": "Пользователь с таким именем уже существует"}
                     }
                 }
             }
         }
     }
-)
+})
     swagger.add_path(
     path="/status",
     method="get",
@@ -124,91 +117,100 @@ def register_swagger_path(swagger):
         }
     ],
     responses={
-        "200": {
-            "description": "Успешный ответ. Возвращает задачи пользователя.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "page": 1,
-                        "per_page": 10,
-                        "total_tasks": 17,
-                        "total_pages": 2,
-                        "tasks": [
-                            {
-                                "task_id": "abc123",
-                                "status_code": "200",
-                                "status_message": "Задача успешно завершена и готова к загрузке"
-                            },
-                            {
-                                "task_id": "xyz789",
-                                "status_code": "100",
-                                "status_message": "Задача в процессе обработки"
-                            }
-                        ]
-                    }
-                }
-            }
-        },
-        "400": {
-            "description": "Некорректный статус",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
+    "200": {
+        "description": "Список задач пользователя (с фильтрацией по статусу или без неё).",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "all_tasks": {
+                        "summary": "Все задачи пользователя",
+                        "value": {
+                            "page": 1,
+                            "per_page": 10,
+                            "total_tasks": 3,
+                            "total_pages": 1,
+                            "tasks": [
+                                {
+                                    "task_id": "abc123",
+                                    "status_code": "80",
+                                    "status_message": "Задача поставлена в очередь"
+                                },
+                                {
+                                    "task_id": "def456",
+                                    "status_code": "200",
+                                    "status_message": "Задача успешно завершена и готова к загрузке"
+                                }
+                            ]
+                        }
+                    },
+                    "filtered_tasks": {
+                        "summary": "Задачи с фильтрацией по статусу",
+                        "value": {
+                            "page": 1,
+                            "per_page": 10,
+                            "total_tasks": 1,
+                            "total_pages": 1,
+                            "tasks": [
+                                {
+                                    "task_id": "def456",
+                                    "status_code": "200",
+                                    "status_message": "Задача успешно завершена и готова к загрузке"
+                                }
+                            ]
+                        }
                     }
                 }
             }
         }
     },
+    "400": {
+        "description": "Некорректное значение параметра status.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
+                }
+            }
+        }
+    }
+},
     security=[{"ApiTokenAuth": []}]
 )
     
     swagger.add_path(
-    path="/status/task_id",
+    path="/status/{task_id}",
     method="get",
-    summary="Получение статуса задачи",
-    tags=["Статусы"],
+    summary="Получить статус задачи по task_id",
     description="""
-    Получить статус задачи по task_id.
-
-    Требуется токен авторизации в заголовке:
-    Authorization: Bearer <token>
-
-    Параметры запроса:
-    - task_id (обязательный): идентификатор задачи.
-
-    Возвращает текущий статус задачи.
+    Возвращает статус конкретной задачи по её идентификатору.
+    Требуется авторизация через Bearer Token.
     """,
     parameters=[
         {
             "name": "task_id",
-            "in": "query",
+            "in": "path",
             "required": True,
-            "schema": {
-                "type": "string"
-            },
+            "schema": {"type": "string"},
             "description": "Идентификатор задачи"
         }
     ],
     responses={
         "200": {
-            "description": "Информация о статусе задачи",
+            "description": "Успешный ответ",
             "content": {
                 "application/json": {
                     "example": {
-                        "Статус": "100",
-                        "ID-задачи": "abc123"
+                        "task_id": "abc123",
+                        "status": {"code": 100, "message": "Задача в процессе обработки"}
                     }
                 }
             }
         },
         "400": {
-            "description": "Отсутствует обязательный параметр task_id",
+            "description": "Отсутствует параметр task_id",
             "content": {
                 "application/json": {
-                    "example": {
-                        "Ошибка": "Параметр 'task_id' обязателен"
-                    }
+                    "example": {"error": "Параметр 'task_id' обязателен"}
                 }
             }
         },
@@ -216,13 +218,12 @@ def register_swagger_path(swagger):
             "description": "Задача не найдена",
             "content": {
                 "application/json": {
-                    "example": {
-                        "Ошибка": "Задача не найдена"
-                    }
+                    "example": {"error": "Задача не найдена"}
                 }
             }
         }
-    }
+    },
+    security=[{"ApiTokenAuth": []}]
 )
     swagger.add_path(
     path="/task",
@@ -270,41 +271,52 @@ def register_swagger_path(swagger):
         }
     },
     responses={
-        "200": {
-            "description": "Список успешно поставленных задач",
-            "content": {
-                "application/json": {
-                    "example": [
-                        {
-                            "task_id": "abc123",
-                            "file_name": "audio1.wav",
-                            "audio_duration": 120,
-                            "remaining_time": 300,
-                            "with_diarization": False
-                        },
-                        {
-                            "task_id": "def456",
-                            "file_name": "audio2.mp3",
-                            "audio_duration": 60,
-                            "remaining_time": 240,
-                            "with_diarization": True
-                        }
-                    ]
-                }
+    "200": {
+        "description": "Список успешно поставленных задач в очередь на обработку.",
+        "content": {
+            "application/json": {
+                "example": [
+                    {
+                        "task_id": "abc123",
+                        "file_name": "audio1.wav",
+                        "audio_duration": 120,
+                        "remaining_time": 300
+                    },
+                    {
+                        "task_id": "def456",
+                        "file_name": "audio2.mp3",
+                        "audio_duration": 60,
+                        "remaining_time": 240
+                    }
+                ]
             }
-        },
-        "400": {
-            "description": "Ошибка валидации, неподдерживаемый формат или недостаточно времени",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error": "Недостаточно времени. Осталось: 10 сек, требуется: 30 сек."
+        }
+    },
+    "400": {
+        "description": "Ошибка валидации (нет файлов, неподдерживаемый формат или недостаточно времени).",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "no_audio": {
+                        "summary": "Аудио не найдены",
+                        "value": {"error": "Ауидо не найдены"}
+                    },
+                    "invalid_format": {
+                        "summary": "Неподдерживаемый формат аудио",
+                        "value": {"error": "Неподдерживаемый формат аудио"}
+                    },
+                    "time_limit": {
+                        "summary": "Недостаточно времени",
+                        "value": {
+                            "error": "Недостаточно времени. Осталось: 10 сек, требуется: 30 сек."
+                        }
                     }
                 }
             }
         }
     }
-)    
+})    
+
     swagger.add_path(
     path="/download",
     method="get",
@@ -343,51 +355,59 @@ def register_swagger_path(swagger):
         }
     ],
     responses={
-        "200": {
-            "description": "Файл успешно найден и отправлен клиенту"
-        },
-        "400": {
-            "description": "Некорректный запрос (например, отсутствуют параметры или тип файла недопустим)",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_params": {
-                            "summary": "Не указаны обязательные параметры",
-                            "value": {
-                                "Ошибка": "Необходимо указать task_id и тип файла (type=txt|json)"
-                            }
-                        },
-                        "invalid_type": {
-                            "summary": "Неверный тип файла",
-                            "value": {
-                                "Ошибка": "Тип файла должен быть либо txt, либо json"
-                            }
+    "200": {
+        "description": "Файл задачи успешно загружен. Ответ будет в формате файла (txt или json).",
+        "content": {
+            "application/octet-stream": {
+                "example": "<содержимое файла или бинарные данные>"
+            }
+        }
+    },
+    "400": {
+        "description": "Некорректный запрос (отсутствуют параметры или неверный тип файла).",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "missing_params": {
+                        "summary": "Не указаны обязательные параметры",
+                        "value": {
+                            "error": "Необходимо указать task_id и тип файла (type=txt|json)"
                         }
-                    }
-                }
-            }
-        },
-        "404": {
-            "description": "Файл или задача не найдены",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "Ошибка": "Задача не найдена или доступ запрещён"
-                    }
-                }
-            }
-        },
-        "500": {
-            "description": "Непредвиденная ошибка при скачивании",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "Ошибка": "Непредвиденная ошибка: <текст_ошибки>"
+                    },
+                    "invalid_type": {
+                        "summary": "Неверный тип файла",
+                        "value": {"error": "Неверный тип файла. Доступные типы: txt, json"}
                     }
                 }
             }
         }
     },
+    "404": {
+        "description": "Задача или запрашиваемый файл не найдены.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "task_not_found": {
+                        "summary": "Задача не найдена",
+                        "value": {"error": "Задача не найдена"}
+                    },
+                    "file_not_found": {
+                        "summary": "Файл не найден",
+                        "value": {"error": "Файл для задачи не найден"}
+                    }
+                }
+            }
+        }
+    },
+    "500": {
+        "description": "Внутренняя ошибка сервера.",
+        "content": {
+            "application/json": {
+                "example": {"error": "Непредвиденная error: <описание ошибки>"}
+            }
+        }
+    }
+},
     security=[{"ApiTokenAuth": []}]
 )
     
