@@ -45,7 +45,7 @@ def admin_check(f):
         if not header:
             return jsonify({"error":"Отсутствует токен для авторизации в запросе"}), 401
         
-        if header!="Bearer jdhnbghryeujgnbf":
+        if header!="Bearer ubsfaU4EoHyPIO9EgCyozFYVGmDKrqiWOomzXS4v2blZtm38PXTSjwx5hCxR2o":
             return jsonify({"error":"Доступ запрещен"}), 401
 
         return f(*args, **kwargs)
