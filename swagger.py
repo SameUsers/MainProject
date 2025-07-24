@@ -76,14 +76,16 @@ def register_swagger_path(swagger):
     method="get",
     summary="Получить список задач по статусу",
     description="""
-    Возвращает список задач пользователя с заданным статусом.  
+    Возвращает список задач пользователя.  
+    Если параметр status не передан, возвращаются все задачи.
+
     Поддерживается пагинация через параметры page и per_page.
 
     Допустимые значения параметра status:  
     - queue (ожидает)  
     - process (в обработке)  
     - done (готово)  
-    - error (ошибка)
+    - error (ошибка)  
 
     ⚠️ Требуется авторизация через Bearer Token.
     """,
@@ -91,12 +93,12 @@ def register_swagger_path(swagger):
         {
             "name": "status",
             "in": "query",
-            "required": True,
+            "required": False,
             "schema": {
                 "type": "string",
                 "enum": ["queue", "process", "done", "error"]
             },
-            "description": "Фильтрация задач по статусу"
+            "description": "Фильтрация задач по статусу. Если не указан, возвращаются все задачи пользователя."
         },
         {
             "name": "page",
@@ -121,11 +123,10 @@ def register_swagger_path(swagger):
     ],
     responses={
         "200": {
-            "description": "Успешный ответ. Возвращает задачи с указанным статусом.",
+            "description": "Успешный ответ. Возвращает задачи пользователя.",
             "content": {
                 "application/json": {
                     "example": {
-                        "status": "done",
                         "page": 1,
                         "per_page": 10,
                         "total_tasks": 17,
@@ -133,11 +134,13 @@ def register_swagger_path(swagger):
                         "tasks": [
                             {
                                 "task_id": "abc123",
-                                "status": "200"
+                                "status_code": "200",
+                                "status_message": "Задача успешно завершена и готова к загрузке"
                             },
                             {
                                 "task_id": "xyz789",
-                                "status": "200"
+                                "status_code": "100",
+                                "status_message": "Задача в процессе обработки"
                             }
                         ]
                     }
