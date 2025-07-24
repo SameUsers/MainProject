@@ -254,7 +254,7 @@ def register_swagger_path(swagger):
                         },
                         "with_diarization": {
                             "type": "boolean",
-                            "description": "Флаг включения диаризации (по умолчанию false)"
+                            "description": "Флаг включения диаризации (по умолчанию true)"
                         }
                     },
                     "required": ["audio"]

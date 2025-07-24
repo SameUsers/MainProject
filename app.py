@@ -102,7 +102,7 @@ def push_task():
     generator=TokenGenerate()
     allowed_types = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav", "audio/flac", "audio/ogg", "audio/mp4", "audio/aac", "audio/wma"]
     audio_files = request.files.getlist("audio")
-    diarization_flag = request.form.get("diarization", "false").lower() == "true"
+    diarization_flag = request.form.get("with_diarization", "true").lower() == "false"
 
     error=check_util.check_value(audio_files,"Ауидо не найдены", 400)
     if error:
@@ -216,7 +216,7 @@ def get_tasks_by_status():
     per_page = int(request.args.get("per_page", 10))
     offset = (page - 1) * per_page
 
-    # Без статуса — отдать все задачи пользователя
+
     if not status_name:
         sql = """
             SELECT task_id,
@@ -244,7 +244,7 @@ def get_tasks_by_status():
             "tasks": result or []
         })
 
-    # Если статус передан — проверяем и фильтруем
+
     if status_name not in status_map:
         return jsonify({
             "error": "Некорректный статус. Допустимые значения: queue, process, done, error"
@@ -348,7 +348,7 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
     try:
         logger_transcription.info("Начало транскрипции (без диаризации) | task_id=%s", task_id)
 
-        sql_update_status = "UPDATE task SET status = %s WHERE task_id = %s"
+        sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
         db.execute(sql_update_status, (
             json.dumps({"code": 100, "message": "Задача в процессе обработки"}),
             task_id
