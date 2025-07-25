@@ -252,9 +252,9 @@ def get_tasks_by_status():
 
         count_sql = """
             SELECT COUNT(*) FROM task
-            WHERE username = %s AND token = %s
+            WHERE username = %s AND user_id = %s
         """
-        count_result = db.execute(count_sql, params=[username, token], fetch=True)
+        count_result = db.execute(count_sql, params=[username, user_id], fetch=True)
         total_tasks = count_result[0]['count'] if count_result else 0
 
         return jsonify({
@@ -286,9 +286,9 @@ def get_tasks_by_status():
 
     count_sql = """
         SELECT COUNT(*) FROM task
-        WHERE username = %s AND token = %s AND status->>'code' = %s
+        WHERE username = %s AND user_id = %s AND status->>'code' = %s
     """
-    count_result = db.execute(count_sql, params=[username, token, status_code], fetch=True)
+    count_result = db.execute(count_sql, params=[username, user_id, status_code], fetch=True)
     total_tasks = count_result[0]['count'] if count_result else 0
 
     return jsonify({
@@ -348,7 +348,7 @@ def transcriptor(file_path, task_id, user_id, duration):
 
         logger_transcription.info("Результат транскрипции успешно получен, форматирован и сохранен")
         logger_app.info("Транскрипция полностью завершена и сохранена")
-        logger_app.info(token)
+
 
         sql_get_remaining_time = "SELECT time_limit FROM users WHERE user_id = %s"
         remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
