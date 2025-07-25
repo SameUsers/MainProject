@@ -147,7 +147,7 @@ def push_task():
         save_path = file_manager.get_file_path("audio_data", username, task_id, audio.filename)
         audio.save(save_path)
         file_size = file_manager.get_file_size(save_path)
-        file_duration = file_manager.get_audio_duration(save_path)
+        file_duration = file_manager.get_audio_duration_second(save_path)
 
         sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
         remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
@@ -166,7 +166,7 @@ def push_task():
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
-            "audio_duration" : math.ceil(file_duration),
+            "audio_duration_second" : file_duration,
             "with_diarization" : diarization_flag,
             "task_id" : task_id,
             "status": {"code": 80, "message": "Задача поставлена в очередь"}
@@ -179,7 +179,7 @@ def push_task():
         response_message={
             "task_id":task_id,
             "file_name":audio.filename,
-            "audio_duration" : math.ceil(file_duration),
+            "audio_duration_second" : math.ceil(file_duration),
             "remaining_time" : remaining_time[0]["time_limit"]
         }
 
@@ -399,7 +399,7 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
         remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
-            new_time = max(0, current_time - duration)
+            new_time = max(0, current_time - math.ceil(duration))
         sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
         db.execute(sql_duration, (new_time, token))
         
@@ -415,9 +415,9 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
 def task_process():
     def handle_task(message):
         if message.get("with_diarization"):
-            transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
+            transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration_second"])
         else:
-            transcriptor_without_diarization(message["file_path"], message["task_id"], message["token"], message["audio_duration"])
+            transcriptor_without_diarization(message["file_path"], message["task_id"], message["token"], message["audio_duration_second"])
 
 
     rabbit.consume_forever(handle_task)

@@ -174,7 +174,8 @@ class DataBase:
                     id SERIAL PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     token TEXT NOT NULL,
-                    time_limit REAL)"""
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                    time_limit INTEGER)"""
         self.execute(sql_data,fetch=False)
 
 
@@ -184,7 +185,7 @@ class DataBase:
                     token TEXT,
                     file_path TEXT,
                     file_name TEXT,
-                    audio_duration INTEGER,
+                    audio_duration_second DECIMAL(10,2),
                     content_type TEXT,
                     with_diarization TEXT,
                     task_id TEXT,
