@@ -350,12 +350,12 @@ def transcriptor(file_path, task_id, user_id, duration):
         logger_app.info("Транскрипция полностью завершена и сохранена")
 
 
-        sql_get_remaining_time = "SELECT time_limit FROM users WHERE user_id = %s"
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE id = %s"
         remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
             new_time = max(0, current_time - math.ceil(duration))
-        sql_duration = "UPDATE users SET time_limit = %s WHERE user_id = %s"
+        sql_duration = "UPDATE users SET time_limit = %s WHERE id = %s"
         db.execute(sql_duration, (new_time, user_id))
         
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
@@ -395,12 +395,12 @@ def transcriptor_without_diarization(file_path, task_id, user_id, duration):
         logger_app.info("Транскрипция полностью завершена и сохранена")
 
 
-        sql_get_remaining_time = "SELECT time_limit FROM users WHERE user_id = %s"
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE id = %s"
         remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
             new_time = max(0, current_time - math.ceil(duration))
-        sql_duration = "UPDATE users SET time_limit = %s WHERE user_id = %s"
+        sql_duration = "UPDATE users SET time_limit = %s WHERE id = %s"
         db.execute(sql_duration, (new_time, user_id))
         
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
