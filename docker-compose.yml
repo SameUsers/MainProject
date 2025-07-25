@@ -2,44 +2,6 @@ version: '3.9'
 
 services:
 
-  loki:
-    image: grafana/loki:2.9.0
-    container_name: loki
-    ports:
-      - "${LOKI_PORT}:${LOKI_PORT}"
-    command: -config.file=/etc/loki/local-config.yaml
-    user: root
-    volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
-      - ./loki-data:/tmp/loki
-    env_file:
-      - .env
-    environment:
-      - TZ=${TZ}
-    restart: unless-stopped
-
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    container_name: promtail
-    volumes:
-      - ./logs:/var/log/app
-      - ./promtail-config.yaml:/etc/promtail/promtail.yaml
-    command: -config.file=/etc/promtail/promtail.yaml
-    restart: unless-stopped
-
-
-  grafana:
-    image: grafana/grafana:10.2.2
-    container_name: grafana
-    ports:
-      - "${GRAFANA_PORT}:3000"
-    volumes:
-      - grafana-storage:/var/lib/grafana
-    depends_on:
-      - loki
-    restart: unless-stopped
-
   postgres:
     image: postgres:15
     container_name: postgres_db
