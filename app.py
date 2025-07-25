@@ -147,7 +147,7 @@ def push_task():
         save_path = file_manager.get_file_path("audio_data", username, task_id, audio.filename)
         audio.save(save_path)
         file_size = file_manager.get_file_size(save_path)
-        file_duration = file_manager.get_audio_duration_second(save_path)
+        file_duration = file_manager.get_audio_duration(save_path)
 
         sql_get_remaining_time = "SELECT time_limit FROM users WHERE id = %s"
         remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
