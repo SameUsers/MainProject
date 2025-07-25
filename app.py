@@ -69,7 +69,7 @@ def header_check(f):
                 
         data=check[0]
 
-        request.token = header
+        request.user_id = data["id"]
         request.username = data["username"]
         logger_app.info("Декоратор успешно проверил токен")
 
@@ -129,7 +129,7 @@ def push_task():
     if error:
         return error
 
-    token = getattr(request, "token", None)
+    user_id = getattr(request, "user_id", None)
     username = getattr(request, "username", None)
 
     task_list=[]
@@ -149,8 +149,8 @@ def push_task():
         file_size = file_manager.get_file_size(save_path)
         file_duration = file_manager.get_audio_duration_second(save_path)
 
-        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
-        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE id = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
 
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
@@ -162,7 +162,7 @@ def push_task():
 
         task_data = {
             "username":username,
-            "token":token,
+            "user_id":user_id,
             "file_path":str(save_path),
             "content_type":audio_type,
             "file_name":audio.filename,
@@ -190,7 +190,7 @@ def push_task():
 @app.route("/download", methods=["GET"])
 @header_check
 def download_task():
-    token = getattr(request, "token", None)
+    user_id = getattr(request, "user_id", None)
     username = getattr(request, "username", None)
 
     task_id = request.args.get("task_id")
@@ -201,10 +201,10 @@ def download_task():
 
     sql = """
         SELECT * FROM task
-        WHERE task_id = %s AND username = %s AND token = %s
+        WHERE task_id = %s AND username = %s AND user_id = %s
         LIMIT 1
     """
-    task = db.execute(sql, params=[task_id, username, token], fetch=True)
+    task = db.execute(sql, params=[task_id, username, user_id], fetch=True)
     if not task:
         return jsonify({"error": "Задача не найдена"}), 404
 
@@ -222,7 +222,7 @@ def download_task():
 @app.route("/status", methods=["GET"])
 @header_check
 def get_tasks_by_status():
-    token = getattr(request, "token", None)
+    user_id = getattr(request, "user_id", None)
     username = getattr(request, "username", None)
 
     status_map = {
@@ -244,11 +244,11 @@ def get_tasks_by_status():
                    status->>'code'    AS status_code,
                    status->>'message' AS status_message
             FROM task
-            WHERE username = %s AND token = %s
+            WHERE username = %s AND user_id = %s
             ORDER BY id DESC
             LIMIT %s OFFSET %s
         """
-        result = db.execute(sql, params=[username, token, per_page, offset], fetch=True)
+        result = db.execute(sql, params=[username, user_id, per_page, offset], fetch=True)
 
         count_sql = """
             SELECT COUNT(*) FROM task
@@ -278,11 +278,11 @@ def get_tasks_by_status():
                status->>'code'    AS status_code,
                status->>'message' AS status_message
         FROM task
-        WHERE username = %s AND token = %s AND status->>'code' = %s
+        WHERE username = %s AND user_id = %s AND status->>'code' = %s
         ORDER BY id DESC
         LIMIT %s OFFSET %s
     """
-    result = db.execute(sql, params=[username, token, status_code, per_page, offset], fetch=True)
+    result = db.execute(sql, params=[username, user_id, status_code, per_page, offset], fetch=True)
 
     count_sql = """
         SELECT COUNT(*) FROM task
@@ -302,7 +302,7 @@ def get_tasks_by_status():
 @app.route("/status/<task_id>", methods=["GET"])
 @header_check
 def get_task_status(task_id):
-    token = getattr(request, "token", None)
+    user_id = getattr(request, "user_id", None)
     username = getattr(request, "username", None)
 
     if not task_id:
@@ -310,10 +310,10 @@ def get_task_status(task_id):
 
     sql = """
         SELECT * FROM task
-        WHERE task_id = %s AND username = %s AND token = %s
+        WHERE task_id = %s AND username = %s AND user_id = %s
         LIMIT 1
     """
-    result = db.execute(sql, params=[task_id, username, token], fetch=True)
+    result = db.execute(sql, params=[task_id, username, user_id], fetch=True)
 
     if not result:
         return jsonify({"error": "Задача не найдена"}), 404
@@ -323,7 +323,7 @@ def get_task_status(task_id):
         "task_id": result[0]["task_id"]
     })
 
-def transcriptor(file_path, task_id, token, duration):
+def transcriptor(file_path, task_id, user_id, duration):
     try:
         logger_transcription.info("Начало транскрипции")
         sql_update = "UPDATE task SET status = %s WHERE task_id = %s"
@@ -350,13 +350,13 @@ def transcriptor(file_path, task_id, token, duration):
         logger_app.info("Транскрипция полностью завершена и сохранена")
         logger_app.info(token)
 
-        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
-        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE user_id = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
-            new_time = max(0, current_time - duration)
-        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
-        db.execute(sql_duration, (new_time, token))
+            new_time = max(0, current_time - math.ceil(duration))
+        sql_duration = "UPDATE users SET time_limit = %s WHERE user_id = %s"
+        db.execute(sql_duration, (new_time, user_id))
         
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
@@ -364,7 +364,7 @@ def transcriptor(file_path, task_id, token, duration):
         print(Exception)
         db.execute(sql_update, (json.dumps({"code": 501, "message": "Транскрипция завершена с ошибкой"}), task_id))
 
-def transcriptor_without_diarization(file_path, task_id, token, duration):
+def transcriptor_without_diarization(file_path, task_id, user_id, duration):
     try:
         logger_transcription.info("Начало транскрипции (без диаризации) | task_id=%s", task_id)
 
@@ -393,15 +393,15 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
 
         logger_transcription.info("Результат транскрипции успешно получен, форматирован и сохранен")
         logger_app.info("Транскрипция полностью завершена и сохранена")
-        logger_app.info(token)
 
-        sql_get_remaining_time = "SELECT time_limit FROM users WHERE token = %s"
-        remaining_time = db.execute(sql_get_remaining_time, (token,), fetch=True)
+
+        sql_get_remaining_time = "SELECT time_limit FROM users WHERE user_id = %s"
+        remaining_time = db.execute(sql_get_remaining_time, (user_id,), fetch=True)
         if remaining_time:
             current_time = remaining_time[0]["time_limit"]
             new_time = max(0, current_time - math.ceil(duration))
-        sql_duration = "UPDATE users SET time_limit = %s WHERE token = %s"
-        db.execute(sql_duration, (new_time, token))
+        sql_duration = "UPDATE users SET time_limit = %s WHERE user_id = %s"
+        db.execute(sql_duration, (new_time, user_id))
         
         db.execute(sql_update, (json.dumps({"code": 200, "message": "Задача успешно завершена и готова к загрузке"}), task_id))
 
@@ -415,9 +415,9 @@ def transcriptor_without_diarization(file_path, task_id, token, duration):
 def task_process():
     def handle_task(message):
         if message.get("with_diarization"):
-            transcriptor(message["file_path"], message["task_id"], message["token"], message["audio_duration_second"])
+            transcriptor(message["file_path"], message["task_id"], message["user_id"], message["audio_duration_second"])
         else:
-            transcriptor_without_diarization(message["file_path"], message["task_id"], message["token"], message["audio_duration_second"])
+            transcriptor_without_diarization(message["file_path"], message["task_id"], message["user_id"], message["audio_duration_second"])
 
 
     rabbit.consume_forever(handle_task)

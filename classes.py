@@ -182,7 +182,7 @@ class DataBase:
         sql_data="""CREATE TABLE IF NOT EXISTS task(
                     id SERIAL PRIMARY KEY,
                     username TEXT,
-                    token TEXT,
+                    user_id INTEGER,
                     file_path TEXT,
                     file_name TEXT,
                     audio_duration_second DECIMAL(10,2),
